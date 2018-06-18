@@ -1,10 +1,8 @@
-import matplotlib.pyplot as plt
-import vehicles
+import matplotlib.pyplot 
+import vehicle_lib 
+import tiremodel_lib 
+import velocityprofile_lib 
+import path_lib 
 
-veh = vehicles.vehicle("nonlinear", "embed")
-print(veh.a)
-
-plt.plot(veh.alphaFtable)
-plt.plot(veh.alphaRtable)
-plt.show()
-
+shelley = veh.vehicle("nonlinear", "embed")
+vp = velocityProfile(path, shelley, 0.9, 99, .95)
