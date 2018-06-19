@@ -3,9 +3,12 @@ import vehicle_lib
 import tiremodel_lib 
 import velocityprofile_lib 
 import path_lib 
+import sim_lib
+import analysis_lib
+import controllers
 
 #Create vehicle object
-shelley = vehicle_lib.Vehicle("nonlinear", "embed")
+shelley = vehicle_lib.Vehicle()
 
 #Create path object
 oval = path_lib.Path()
@@ -16,13 +19,12 @@ oval.setFriction(0.7)
 speedProfile = velocityprofile_lib.VelocityProfile("racing")
 speedProfile.generate(shelley, oval)
 
-# plt.figure()
-# plt.plot(speedProfile.s, speedProfile.Ux)
-# plt.xlabel("s (m)")
-# plt.ylabel("Ux (m)")
+#specify we want to use the lanekeeping controller
 
-# plt.figure()
-# plt.plot(speedProfile.s, speedProfile.Ax)
-# plt.xlabel("s (m)")
-# plt.ylabel("Ux (m)")
-# plt.show()
+
+
+bikeSim = sim_lib.Simulation(oval, shelley, speedProfile)
+bikeSim.simulate()
+bikeSim.plotSimResults()
+
+

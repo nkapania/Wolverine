@@ -2,11 +2,10 @@ import numpy as np
 import tiremodels as tm
 #Defines a vehicle class, with full parameters
 
-#currently just uses Shelley values
+#Defaults to shelley variables
 class Vehicle:
-	def __init__(self, tireType, mapMatchType): 
+	def __init__(self): 
 		
-		self.mapMatchType = mapMatchType
 		self.tireType = tireType
 		self.a = 1.0441 #CG to front wheelbase [m]
 		self.b = 1.4248 #CG to rear wheelbase [m] 
@@ -40,16 +39,16 @@ class Vehicle:
 		self.alphaRtable = self.alphaRtable.reshape(self.numTableValues,1)
 		self.alphaFtable = self.alphaFtable.reshape(self.numTableValues,1)
 
-		if tireType is "linear":
-		 	self.FyFtable = -self.Cf*self.alphaFtable
-		 	self.FyRtable = -self.Cr*self.alphaRtable
+		# if tireType is "linear":
+		#  	self.FyFtable = -self.Cf*self.alphaFtable
+		#  	self.FyRtable = -self.Cr*self.alphaRtable
 			
-		elif tireType is "nonlinear":
-		 	self.FyFtable = tm.fiala(self.Cf, self.muF, self.muF, self.alphaFtable, self.FzF)
-		 	self.FyRtable = tm.fiala(self.Cr, self.muR, self.muR, self.alphaRtable, self.FzR)
+		# elif tireType is "nonlinear":
+		#  	self.FyFtable = tm.fiala(self.Cf, self.muF, self.muF, self.alphaFtable, self.FzF)
+		#  	self.FyRtable = tm.fiala(self.Cr, self.muR, self.muR, self.alphaRtable, self.FzR)
 
-		else:
-			print("Accepted tire types are linear or nonlinear") 
+		# else:
+		# 	print("Accepted tire types are linear or nonlinear") 
 
 
 
