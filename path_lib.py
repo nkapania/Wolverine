@@ -1,56 +1,45 @@
+#This library deals with generating words
+
 import numpy as np
-import tiremodels as tm
-#Defines a vehicle class, with full parameters
+from numpy import genfromtxt
+#from scipy.io import loadmat
+import tables
 
-#currently just uses Shelley values
-class vehicle:
-	def __init__(self, tireType, mapMatchType): 
+class Path:
+	def __init__(self): 
+		self.roadIC = np.zeros((3,1))  #Heading(rad), Road E(m), Road N(m)
+		self.posE = np.array([[0]])  #east coordinates
+		self.posN = np.array([[0]])  #north coordinates
+		self.roadPsi = np.array ([[0]]) #heading
+		self.curvature = np.array ([[0]]) #curvature
+		self.s = np.array ([[0]])
+		self.type = "open" #does not form a loop
+		self.referencePoint =np.zeros((3,1)) #GPS reference point
+		self.refPointName = "none" #name of reference point
+		self.friction = 1.0 #default value
+
+	#loads map from mat file
+	def loadFromCSV(self, pathName):
+		x = genfromtxt(pathName, delimiter =",")
+		self.s = x[:,0]
+		self.curvature = x[:,1]
+		self.posE = x[:,2]
+		self.posN = x[:,3]
+		self.roadPsi = x[:,4]
+		self.roadIC = x[0:3,5]
+
+
+	def setFriction(self, value):
+		self.friction = value
 		
-		self.mapMatchType = mapMatchType
-		self.tireType = tireType
-		self.a = 1.0441 #CG to front wheelbase [m]
-		self.b = 1.4248 #CG to rear wheelbase [m] 
-		self.m = 1512.4 #selficle mass (kg)
-		self.Cf = 160000.0 #selficle cornering stiffness (N)
-		self.Cr = 180000.0 #selficle cornering stiffness (N)
-		self.Iz  = 2.25E3  #selficle inertia (kg  m^2)
-		self.xLA = 14.2    #lookahead distance, meters
-		self.kLK = .0538   #proportional gain , rad / meter
-		self.muF = .97     #front friction coeff
-		self.muR = 1.02    #rear friction coeff
-		self.g = 9.81      #m/s^2, accel due to gravity
-		self.L = self.a + self.b #total selficle length, m
-		self.FzF = self.m*self.b*self.g/self.L   #Maximum force on front selficles
-		self.FzR = self.m*self.a*self.g/self.L   #Maximium force on rear selficles
-		self.D = 0.3638 #Drag coefficient
-		self.h = 0.75   #Distance from the ground
-		self.alphaFlim = 7.0 * np.pi / 180 #rad
-		self.alphaRlim = 5.0 * np.pi / 180 #rad 
-		self.alphaFslide = np.abs(np.arctan(3*self.muF*self.m*self.b/self.L*self.g/self.Cf)) 
-		self.alphaRslide = np.abs( np.arctan(3*self.muR*self.m*self.a/self.L*self.g/self.Cr))
-		self.brakeTimeDelay = 0.25 #Seconds
-		self.rollResistance = 255.0 #Newtons
-		self.Kx = 3000.0; #Speed tracking gain
-		self.powerLimit = 16000.0 #Watts
-		self.numTableValues = 250
-		self.alphaFtable = np.linspace(-self.alphaFslide,self.alphaFslide,self.numTableValues)
-		self.alphaRtable = np.linspace(-self.alphaRslide,self.alphaRslide,self.numTableValues) # vector of rear alpha (rad)
+
+
+
 		
-		self.alphaRtable = self.alphaRtable.reshape(self.numTableValues,1)
-		self.alphaFtable = self.alphaFtable.reshape(self.numTableValues,1)
-
-		if tireType is "linear":
-		 	self.FyFtable = -self.Cf*self.alphaFtable
-		 	self.FyRtable = -self.Cr*self.alphaRtable
-			
-		elif tireType is "nonlinear":
-		 	self.FyFtable = tm.fiala(self.Cf, self.muF, self.muF, self.alphaFtable, self.FzF)
-		 	self.FyRtable = tm.fiala(self.Cr, self.muR, self.muR, self.alphaRtable, self.FzR)
-
-		else:
-			print("Accepted tire types are linear or nonlinear") 
 
 
 
 
 
+
+		

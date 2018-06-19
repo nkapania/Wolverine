@@ -1,54 +1,82 @@
 import numpy as np
-import tiremodels as tm
-#Defines a vehicle class, with full parameters
+#Defines a velocity profile class
 
 #currently just uses Shelley values
-class vehicle:
-	def __init__(self, tireType, mapMatchType): 
-		
-		self.mapMatchType = mapMatchType
-		self.tireType = tireType
-		self.a = 1.0441 #CG to front wheelbase [m]
-		self.b = 1.4248 #CG to rear wheelbase [m] 
-		self.m = 1512.4 #selficle mass (kg)
-		self.Cf = 160000.0 #selficle cornering stiffness (N)
-		self.Cr = 180000.0 #selficle cornering stiffness (N)
-		self.Iz  = 2.25E3  #selficle inertia (kg  m^2)
-		self.xLA = 14.2    #lookahead distance, meters
-		self.kLK = .0538   #proportional gain , rad / meter
-		self.muF = .97     #front friction coeff
-		self.muR = 1.02    #rear friction coeff
-		self.g = 9.81      #m/s^2, accel due to gravity
-		self.L = self.a + self.b #total selficle length, m
-		self.FzF = self.m*self.b*self.g/self.L   #Maximum force on front selficles
-		self.FzR = self.m*self.a*self.g/self.L   #Maximium force on rear selficles
-		self.D = 0.3638 #Drag coefficient
-		self.h = 0.75   #Distance from the ground
-		self.alphaFlim = 7.0 * np.pi / 180 #rad
-		self.alphaRlim = 5.0 * np.pi / 180 #rad 
-		self.alphaFslide = np.abs(np.arctan(3*self.muF*self.m*self.b/self.L*self.g/self.Cf)) 
-		self.alphaRslide = np.abs( np.arctan(3*self.muR*self.m*self.a/self.L*self.g/self.Cr))
-		self.brakeTimeDelay = 0.25 #Seconds
-		self.rollResistance = 255.0 #Newtons
-		self.Kx = 3000.0; #Speed tracking gain
-		self.powerLimit = 16000.0 #Watts
-		self.numTableValues = 250
-		self.alphaFtable = np.linspace(-self.alphaFslide,self.alphaFslide,self.numTableValues)
-		self.alphaRtable = np.linspace(-self.alphaRslide,self.alphaRslide,self.numTableValues) # vector of rear alpha (rad)
-		
-		self.alphaRtable = self.alphaRtable.reshape(self.numTableValues,1)
-		self.alphaFtable = self.alphaFtable.reshape(self.numTableValues,1)
+class VelocityProfile:
+	def __init__(self, profileType):
+		self.type = profileType
+		self.s = np.array([[0]])
+		self.Ux = np.array([[0]]) 
+		self.Ax = np.array([[0]])
 
-		if tireType is "linear":
-		 	self.FyFtable = -self.Cf*self.alphaFtable
-		 	self.FyRtable = -self.Cr*self.alphaRtable
-			
-		elif tireType is "nonlinear":
-		 	self.FyFtable = tm.fiala(self.Cf, self.muF, self.muF, self.alphaFtable, self.FzF)
-		 	self.FyRtable = tm.fiala(self.Cr, self.muR, self.muR, self.alphaRtable, self.FzR)
 
-		else:
-			print("Accepted tire types are linear or nonlinear") 
+	def generate(self, vehicle, path):
+		if self.type is "racing":
+			self.s, self.Ax, self.Ux = generateRacingProfile(Vehicle, Path)
+
+		else: 
+			print("Only racing currently supported")
+
+
+
+def generateRacingProfile(vehicle, path):
+	#Extract Peformance Limits and parameters
+	g = Vehicle.g
+	vMax = vehicle.maxSpeed
+	AxMax = Path.friction * g
+	AyMax = Path.friction * g
+	K = path.curvature
+	s = path.s
+
+	numSteps = Path.s.size
+	
+	#Pre-allocate three velocity profiles (steady state, braking, decel)
+	UxInit1 = np.zeros((numSteps,1))
+	UxInit2 = np.zeros((numSteps,1))
+	UxInit3 = np.zeros((numSteps,1))
+
+	#Pre-allocate Ax and Ay
+	ax = np.zeros((numSteps,1))
+	ay = np.zeros((numSteps,1))
+
+	#Desired velocity should meet lateral acceleration requirement
+	UxInit1 = np.sqrt ( np.Divide(AyMax, np.Abs(K + 1e-8) ) )
+
+	#Integrate forward to find acceleration limit
+	for i in range(UxInit2.size):
+		temp = np.sqrt( UxInit2[i]**2 + 2*AxMax*(s[i+1] - s[i]))
+		
+		if temp > vMax:
+			temp = vMax
+
+		if temp > UxInit1[i+1]:
+			temp = UxInit1[i+1]
+
+		UxInit2[i+1] = temp
+
+	#Moving rearward, integrate backwards
+	for i = Nsteps:-1:2:
+		temp = np.sqrt( UxInit3[i]**2 + 2* AxMax * (s[i] - s[i-1]) )
+		if temp > UxInit2[i-1]:
+			temp = UxInit2[i-1]
+
+		UxInit3[i-1] = temp
+
+
+		f
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
