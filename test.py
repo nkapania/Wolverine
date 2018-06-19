@@ -14,4 +14,15 @@ oval.setFriction(0.7)
 
 #Create speed profile
 speedProfile = velocityprofile_lib.VelocityProfile("racing")
-speedProfile.generate(oval, shelley)
+speedProfile.generate(shelley, oval)
+
+# plt.figure()
+# plt.plot(speedProfile.s, speedProfile.Ux)
+# plt.xlabel("s (m)")
+# plt.ylabel("Ux (m)")
+
+# plt.figure()
+# plt.plot(speedProfile.s, speedProfile.Ax)
+# plt.xlabel("s (m)")
+# plt.ylabel("Ux (m)")
+# plt.show()

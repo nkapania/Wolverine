@@ -21,12 +21,24 @@ class Path:
 	#loads map from mat file
 	def loadFromCSV(self, pathName):
 		x = genfromtxt(pathName, delimiter =",")
-		self.s = x[:,0]
-		self.curvature = x[:,1]
-		self.posE = x[:,2]
-		self.posN = x[:,3]
-		self.roadPsi = x[:,4]
-		self.roadIC = x[0:3,5]
+		s = x[:,0]
+		curvature = x[:,1]
+		posE = x[:,2]
+		posN = x[:,3]
+		roadPsi = x[:,4]
+		roadIC = x[0:3,5]
+
+		#reshape to row vectors
+		self.s = np.reshape(s, (s.size,1) )
+		self.curvature = np.reshape(curvature, (curvature.size,1) )
+		self.posE = np.reshape(posE, (posE.size,1) )
+		self.posN = np.reshape(posN, (posN.size,1) )
+		self.roadPsi = np.reshape(roadPsi, (roadPsi.size,1) )
+		self.roadIC = np.reshape(roadIC, (roadIC.size,1) )
+
+
+
+
 
 
 	def setFriction(self, value):
