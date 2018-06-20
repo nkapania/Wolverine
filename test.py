@@ -15,6 +15,11 @@ oval = path_lib.Path()
 oval.loadFromCSV("maps/simpleRace.csv") #initialize by loading already defined map
 oval.setFriction(0.7)
 
+#Create controller object - use lanekeeping
+controller = LaneKeepingController()
+
+
+
 #Create speed profile
 speedProfile = velocityprofile_lib.VelocityProfile("racing")
 speedProfile.generate(shelley, oval)

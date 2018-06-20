@@ -8,16 +8,17 @@ import controllers
 
 
 class Simulation:
-	def __init__(self, path, vehicle, profile, localizationType = "euler", controllerType = "lanekeeping"): 
+	def __init__(self, path, vehicle, profile, controller): 
 		self.path = path
 		self.vehicle = vehicle
 		self.profile = profile
 		self.localizationType = localizationType
-		self.controllerType = controllerType
+		self.controller = controller
 		self.isRunning = True
 		self.physics = "bicycle"
 		self.logger = Logger()
 		self.ts = 0.01
+		self.mapMatchType = "euler"
 		
 	def simulate(self):
 		#initialize states
@@ -25,8 +26,7 @@ class Simulation:
 		globalState = GlobalState(self.path)
 		controlInput = ControlInput()
 		counter = 0
-		controller = Controller(self.path, self.vehicle, self.profile, self.controllerType)
-
+		
 
 		while self.isRunning:
 
