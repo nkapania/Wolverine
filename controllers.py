@@ -8,11 +8,13 @@ import math
 #Controller from Nitin Kapania's PhD thesis - lookahead with augmented sideslip for
 #steering feedback, longitudinal is simple PID feedback control
 class LaneKeepingController():
-	def __init__(self, path, vehicle):
+	def __init__(self, path, vehicle, profile):
 		self.path = path
 		self.vehicle = vehicle
+		self.profile = profile
 		self.xLA = 14.2    #lookahead distance, meters
 		self.kLK = 0.0538  #proportional gain , rad / meter
+		self.kSpeed = 1000.0 #Speed proportional gain - N / (m/s)
 		self.alphaFlim = 7.0 * np.pi / 180 #steering limits for feedforward controller
 		self.alphaRlim = 5.0 * np.pi / 180 #steering limits for feedforward controller
 
@@ -44,22 +46,36 @@ class LaneKeepingController():
 	def lanekeeping(self,localState):
 		deltaFFW, betaFFW = getDeltaFFW(self, localState)
 		deltaFB = getDeltaFB(self, localState, betaFFW)
+		delta = deltaFFW + deltaFB
+		return delta, deltaFFW, deltaFB
 
 
 	def getDeltaFB(self, localState, betaFFW):
-		kLK = params['kLK']
-		xLA = params['xLA']
+		kLK = self.kLK
+		xLA = self.xLA
 		e = localState.e
 		dPsi = localState.dPsi
 
 		deltaFB = -kLK * (e + xLA * sin(dPsi + betaFFW))
 		return deltaFB
 
-	def speedTracking(localState):
-		Fx = Fxff = m*AxDes + sign(Ux)*fdrag*Ux^2 + frr*sign(Ux); % Feedforward
-    	Fxfb = -kp_fx*(Ux - UxDes); % Feedback
-    	FxCommand = Fxff + Fxfb; 
-    	return 
+	def speedTracking(self, localState):
+		AxTable = self.profile.AxDes
+		UxTable = self.profile.Ux
+		sTable = self.profile.s
+		s = localState.s
+		Ux = localState.Ux
+
+		AxDes = np.interp(sTable, s, AxTable) #run interp every time - this is slow, but we may be able to get away with
+		UxDes = np.interp(sTable, s, UxTable) 
+
+		alpha = np.interp(forceTable, Fdes, alphaTable)
+
+
+		FxFFW = m*AxDes #+ np.sign(Ux)*fdrag*Ux^2 + frr*sign(Ux); % Feedforward
+    	FxFB = -self.kSpeed*(Ux - UxDes); % Feedback
+    	FxCommand = FxFFW + FxFB
+    	return Fx
 
 	def getDeltaFFW(self, localState):
 		a = self.vehicle.a
@@ -90,6 +106,8 @@ class LaneKeepingController():
 			Fdes = min(forceTable) + 1
 
 		alpha = np.interp(forceTable, Fdes, alphaTable)
+
+		return alpha
 
 		
 

@@ -31,19 +31,16 @@ class Simulation:
 		while self.isRunning:
 
 			#Perform localization
-			localState = mapMatch(localState, globalState, self.path, self.mapMatchType)
+			localState, matchObject = mapMatch(localState, globalState, self.path, self.mapMatchType)
 
 			#Check to see if we should terminate
 			self.checkForTermination()
 
 			#Calculate controller inputs
-			controlInput = controller.calculateInput(localState)
+			controlInput = controller.calculateInput(localState, matchObject)
 
 			#Update state
-			localState, globalState, intermediates = updateState(controlInput)
-
-			#Update logger
-			Logger.append(localState, globalState, controlInput, intermediates) 
+			localState, globalState = updateState(controlInput)
 
 			#Append counter and print to screen
 			printStatus(localState, path)
@@ -61,11 +58,65 @@ class Simulation:
 		if abs(self.localState.e) > 5.0:
 			print("Car has left the track - terminating...")
 			self.isRunning = false
+
+
+	def updateState(self, controlInput):
+		if physics is "bicycle":
+			localState, globalState = bicycleModel(self.vehicle, controlInput, localState)
+
+
+
+
 		
+
+
+
+def bicycleModel(vehicle, controlInput, localState):
+	#Implementation of bicycle model with force derating, but no longitudinal dynamics
+	FxDes = controlInput.Fx
+	Ux = localState.Ux	
+
+	FxF, FxR = getFx(FxDes, Ux, vehicle)
+	
+    FyF, FyR = tm.coupledTireForces(alphaF, alphaR,  FxF, FxR, vehicle)
+      
+
+
+	       #  dUy = (FyF + FyR)/veh.m - r*Ux;
+        # dr = (veh.a*FyF - veh.b*FyR)/veh.Iz;
+        # dUx = Uy*r + (FxF + FxR - FyF*delta)/veh.m;
+        # if strcmp(veh.mapMatch, 'euler')
+        #     de = Uy*cos(dPsi) + Ux*sin(dPsi);
+        #     ds = Ux*cos(dPsi) - Uy*sin(dPsi);
+        #     ddPsi = r - K*Ux;
+        # end
+
+        # dE = -Uy*cos(psi)-Ux*sin(psi);
+        # dN = Ux*cos(psi) - Uy*sin(psi);
+        # dotPsi = r;
+
+
+
+def getFx(FxDes, Ux, vehicle):
+
+	#Implement engine and brake limits
+	if FxDes > 0:
+		Fx = np.min( vehicle.powerLimit / Ux , FxDes)
+	else:
+		Fx = FxDes
+
+	#Distribute according to weight
+	FxF = Fx * vehicle.b / vehicle.L
+	FxR = Fx * vehicle.a / vehicle.L
+	return FxF, FxR
+
+
+
 
 def mapMatch(self, localState, globalState, path, matchType):
 		if matchType is "euler":
 			return
+
 		elif matchType is "embed":
 			#to be implemented - embedded map matching
 
@@ -78,11 +129,10 @@ class LocalState:
 		self.e = e
 		self.dPsi = dPsi
 		self.s = s
-		self.K = 0.0
-
+		
 class GlobalState:
 	def __init__(path):
-		self.posE = path.posE[1]
+		self.posE = path.posE[1] #start at second element of array to avoid mapMatch issues
 		self.posN = path.posN[1]
 		self.psi  = path.roadPsi[1]
 
@@ -92,5 +142,15 @@ class ControlInput:
 		self.delta = 0.0
 
 
-class Logger:
-	def __init__(self):
+
+
+
+# class MatchObject:
+# 	def __init__(self):
+# 		self.idx = 1
+# 		self.numIters = 0
+# 		self.interpFraction = 0.0
+
+
+#class Logger:
+#	def __init__(self):
