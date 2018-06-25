@@ -19,6 +19,54 @@ def fiala(C, muP, muS, alpha, Fz):
 
 
 
+#Coupled tire model - accounts for derating of lateral tire force when longitudinal force is applied 
+def coupledTireModel(alphaF, alphaR,  FxF, FxR, vehicle):
+	muP = vehicle.muP
+	muS = vehicle.muS
+
+	FzF = vehicle.FzF
+	FzR = vehicle.FzR
+
+	Cf = vehicle.Cf
+	Cr = vehicle.Cr
+
+	FyF = __coupledTire(alphaF, FxF, FzF, muS, muP, Cf)
+	FyR = __coupledTire(alphaR, FxR, FzR, muS, muP, Cr)
+
+	return FyF, FyR
+
+
+#helper function, don't need to call
+def _coupledTire(alpha, Fx, Fz, muS, muP, C):
+	if (muP * Fz) ** 2 > Fx ** 2: 
+		arg = max ((muP * Fz) **2 - Fx ** 2, 0)  #check for negative values
+		zeta = np.sqrt( arg / (muP*Fz) )
+	else:
+		zeta = 0
+
+	alphaSlide = np.abs( np.atan( 3 * zeta * muP * Fz / C))
+
+	#use fiala model, not sliding
+	if abs(alpha) < alphaSlide:
+		linearTerm = -C * np.tan(alpha)
+		quadTerm   = C**2 * (2 - muS/muP) * abs(np.tan(alpha))*np.tan(alpha) / (3 * zeta * muP * Fz)
+		cubicTerm  = - C**3 *np.tan(alpha)**3 * (1 - 2*muS / (3*muP) ) / ( 9* muP**2 * zeta**2 * Fz **2 ) 
+		Fy = linearTerm + quadTerm + cubicTerm
+
+	else:
+		Fy = - zeta * muS * Fz * np.sign(alpha) 
+
+	return Fy
+
+
+
+
 
 		
 		
+
+
+
+
+
+

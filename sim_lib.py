@@ -43,9 +43,8 @@ class Simulation:
 			localState, globalState = updateState(controlInput)
 
 			#Append counter and print to screen
-			printStatus(localState, path)
-
 			counter = counter + 1
+			printStatus(localState, path, counter)
 
 
 	def checkForTermination(self):
@@ -62,39 +61,87 @@ class Simulation:
 
 	def updateState(self, controlInput):
 		if physics is "bicycle":
-			localState, globalState = bicycleModel(self.vehicle, controlInput, localState)
+			localState, globalState = bicycleModel(self.vehicle, controlInput, localState, self.matchType, self.ts)
 
-
-
-
+	def printStatus(self, localState, path, counter):
+		pctComplete = np.ceil( 100 * localState.s / path.s[-1] )
+		if np.mod(counter, 100) = 0:
+			print("Simulation is %02d percent done") % pctComplete
+			print("Distance Along Path is %04d meters") % localState.s
 		
 
 
-
-def bicycleModel(vehicle, controlInput, localState):
+def bicycleModel(vehicle, controlInput, localState, matchType, ts):
 	#Implementation of bicycle model with force derating, but no longitudinal dynamics
 	FxDes = controlInput.Fx
 	Ux = localState.Ux	
 
+
 	FxF, FxR = getFx(FxDes, Ux, vehicle)
-	
+	alphaF, alphaR = getSlips(localState, vehicle, controlInput)
+
     FyF, FyR = tm.coupledTireForces(alphaF, alphaR,  FxF, FxR, vehicle)
+
+    
+    #compute derivatives
+    m = vehicle.m
+    r = localState.r
+    delta = controlInput.delta
+    a = vehicle.a
+    b = vehicle.b
+    Iz = vehicle.Iz
+
+
+    dUy = (FyF + FyR) / m - r*Ux
+    dr  = (a*FyF - b*Fyr) / Iz
+    dUx = Uy * r + (FxF + FxR - FyF * delta) / m
+
+    if matchType is "euler":
+    	de = Uy * np.cos(dPsi) + Ux * np.sin(dPsi)
+    	ds = Ux * np.cos(dPsi) - Uy * np.sin(dPsi)
+    	ddPsi = r - K * Ux
+
+    dE = - Uy * np.cos(psi) - Ux * np.sin(psi)
+    dN =   Ux * np.cos(psi) - Uy * np.sin(psi)
+    dotPsi = r
+
+
+    #update states
+    Uy = Uy + ts * dUy
+    r  = r + ts * dr
+    Ux = Ux + ts * dUx
+    posE = posE + ts*dE
+    posN = posN + ts*dN
+    psi = psi + ts*dPsi
+
+    if matchType is "euler":
+    	e = e + ts*de 
+    	s = s + ts*ds
+    	dPsi = dPsi + ts * ddPsi
+
+
+    localState.update(Ux, Uy, r, e, dPsi, s)
+    globalState.update(posE, posN, psi)
+        
+    return localState, globalState  
       
 
 
-	       #  dUy = (FyF + FyR)/veh.m - r*Ux;
-        # dr = (veh.a*FyF - veh.b*FyR)/veh.Iz;
-        # dUx = Uy*r + (FxF + FxR - FyF*delta)/veh.m;
-        # if strcmp(veh.mapMatch, 'euler')
-        #     de = Uy*cos(dPsi) + Ux*sin(dPsi);
-        #     ds = Ux*cos(dPsi) - Uy*sin(dPsi);
-        #     ddPsi = r - K*Ux;
-        # end
 
-        # dE = -Uy*cos(psi)-Ux*sin(psi);
-        # dN = Ux*cos(psi) - Uy*sin(psi);
-        # dotPsi = r;
+def getSlips(localState, veh, controlInput):
+	Ux = localState.Ux
+	Uy = localState.Uy
+	delta = controlInput.delta
+	
+	if Ux < 2.0:
+		alphaF = 0 #speed too low to get slip estimate
+		alphaR = 0
 
+	else:
+		alphaF = np.arctan( (Uy + veh.a * r) / Ux ) - delta
+		alphaR = np.arctan( (Uy - veh.b * r) / Ux ) 
+
+	return alphaF, alphaR
 
 
 def getFx(FxDes, Ux, vehicle):
@@ -109,8 +156,6 @@ def getFx(FxDes, Ux, vehicle):
 	FxF = Fx * vehicle.b / vehicle.L
 	FxR = Fx * vehicle.a / vehicle.L
 	return FxF, FxR
-
-
 
 
 def mapMatch(self, localState, globalState, path, matchType):
@@ -129,6 +174,15 @@ class LocalState:
 		self.e = e
 		self.dPsi = dPsi
 		self.s = s
+
+	def update(self, Ux, Uy, r, e, dPsi, s):
+		self.Ux = Ux
+		self.Uy = Uy
+		self.r  = r
+		self.e  = e
+		self.dPsi = dPsi
+		self.s = s
+
 		
 class GlobalState:
 	def __init__(path):
@@ -136,11 +190,15 @@ class GlobalState:
 		self.posN = path.posN[1]
 		self.psi  = path.roadPsi[1]
 
+	def update(self, posE, posN, psi):
+		self.posE = posE
+		self.posN = posN
+		self.psi  = psi
+
 class ControlInput:
 	def __init__(self):
 		self.Fx = 0.0
 		self.delta = 0.0
-
 
 
 
