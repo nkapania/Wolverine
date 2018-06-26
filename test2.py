@@ -1,20 +1,34 @@
 import matplotlib.pyplot as plt
-import vehicle_lib 
-import tiremodel_lib 
-import velocityprofile_lib 
-import path_lib 
 import sim_lib
-import controllers
 import numpy as np
-import time
 
-#Create vehicle object
-shelley = vehicle_lib.Vehicle()
+log = sim_lib.Logger(500)
 
-#Create path object
-oval = path_lib.Path()
-oval.loadFromCSV("maps/simpleRace.csv") #initialize by loading already defined map
+b = 0.0
+for i in range(0,100):
+
+	if i < 50: 
+		a = 0
+		b = 0
+	else:
+		a = np.random.randint(0,10)
+		b = b + 0.01
+
+	
+	log.append('a',a)
+	log.append('b',b)
+	log.incrementCounter()
 
 
 
+logFile = log.getData()
 
+aP = logFile['a']
+bP = logFile['b']
+
+plt.plot(bP, aP)
+plt.show()
+
+
+print( aP.shape )
+print( bP.shape )

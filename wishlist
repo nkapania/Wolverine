@@ -1,0 +1,2 @@
+- Get rid of interp calls in loops for speed
+- Avoid K coming in as input

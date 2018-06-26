@@ -74,7 +74,7 @@ def generateRacingProfile(vehicle, path):
 
 	#calculate acceleration profile from physics
 	ax = np.divide( (np.roll(UxInit3,1)**2 - UxInit3**2) , (2 * (np.roll(s,1) - path.s) ) )
-	ax[-1] = ax[-2]
+	ax[0] = ax[1] #avoid bug where vehicle starts with initial desired acceleration
 	
 
 	return s, ax, UxInit3

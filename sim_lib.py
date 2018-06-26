@@ -15,10 +15,10 @@ class Simulation:
 		self.controller = controller
 		self.isRunning = True
 		self.physics = "bicycle"
-		#self.logger = Logger()
+		self.logger = Logger()
 		self.ts = 0.01
 		self.mapMatchType = "euler"
-
+		
 		
 	def simulate(self):
 		#initialize states
@@ -27,6 +27,7 @@ class Simulation:
 		globalState = GlobalState(self.path)
 		controlInput = controllers.ControlInput()
 		counter = 0
+		log = Logger()
 		
 
 		while self.isRunning:
@@ -35,32 +36,59 @@ class Simulation:
 			localState = mapMatch(localState, globalState, self.path, self.mapMatchType)	
 
 			#Check to see if we should terminate
-			self.checkForTermination(localState)
+			self.checkForTermination(localState, counter)
 
 			#Calculate controller inputs
-			controlInput, K = self.controller.updateInput(localState, controlInput)
+			controlInput, auxVars = self.controller.updateInput(localState, controlInput)
 
 			#Update state
-			localState, globalState = self.updateState(controlInput, localState, globalState, K)
+			localState, globalState = self.updateState(controlInput, localState, globalState, auxVars)
 
 			#Append counter and print to screen
 			counter = counter + 1
 			printStatus(localState, self.path, counter)
+			
 
 
-	def checkForTermination(self, localState):
+
+			#save signals needed
+			K, UxDes = auxVars	#unpack auxillary variables
+
+			log.append('t',counter*self.ts)
+			log.append('Ux',localState.Ux)
+			log.append('s', localState.s)
+			log.append('UxDes', UxDes) 
+			log.append('posE', globalState.posE)
+			log.append('posN', globalState.posN)
+			log.incrementCounter()
+
+
+
+		return log.getData()
+
+
+
+
+
+	def checkForTermination(self, localState, counter):
 
 		#Check if we have ended the simulation
 		if localState.s > self.path.s[-1] - 0.55: #Stop simulation a little before end of path
-			self.isRunning = false
+			self.isRunning = False
 
 		#Check if we have gone off the track	
 		if abs(localState.e) > 5.0:
 			print("Car has left the track - terminating...")
-			self.isRunning = false
+			self.isRunning = False
+
+		#For debug
+		if counter is 1000:
+			self.isRunning = False
+			print("Simulation Terminating")
 
 
-	def updateState(self, controlInput, localState, globalState, K):
+	def updateState(self, controlInput, localState, globalState, auxVars):
+		(K, UxDes) = auxVars #unpack auxvars
 		if self.physics is "bicycle":
 			localState, globalState = bicycleModel(self.vehicle, controlInput, localState, globalState, self.mapMatchType, self.ts, K)
 			return localState, globalState
@@ -93,6 +121,37 @@ class GlobalState:
 		self.posE = posE
 		self.posN = posN
 		self.psi  = psi
+
+class Logger:
+	def __init__(self, NUMBER_DATA_POINTS = 10000):
+		self.data = {}
+		self.counter = 0
+		self.NUMBER_DATA_POINTS = NUMBER_DATA_POINTS
+
+	def append(self, signalName, signalData):
+		if signalName in self.data.keys():
+			self.data[signalName][self.counter] = signalData
+
+		else:
+			#create array once
+			self.data[signalName] = np.zeros( (self.NUMBER_DATA_POINTS, 1) )
+
+	def incrementCounter(self):
+		self.counter = self.counter + 1
+
+
+	def getData(self):
+		#remove trailing zeros
+		for key in self.data.keys():
+			object = self.data[key]
+			self.data[key] = np.trim_zeros(object, 'b')
+
+		#return the dictionary
+		return self.data
+
+
+
+
 
 def  bicycleModel(vehicle, controlInput, localState, globalState, matchType, ts, K):
 	#Implementation of bicycle model with force derating, but no longitudinal dynamics
@@ -145,6 +204,7 @@ def  bicycleModel(vehicle, controlInput, localState, globalState, matchType, ts,
 	posN = posN + ts*dN
 	psi = psi + ts*dotPsi
 
+
 	#For Euler integration, update states with ODEs 
 	if matchType is "euler":
 		e = e + ts*de 
@@ -162,6 +222,7 @@ def  bicycleModel(vehicle, controlInput, localState, globalState, matchType, ts,
 def getSlips(localState, veh, controlInput):
 	Ux = localState.Ux
 	Uy = localState.Uy
+	r  = localState.r
 	delta = controlInput.delta
 	
 	if Ux < 2.0:
@@ -179,7 +240,10 @@ def getFx(FxDes, Ux, vehicle):
 
 	#Implement engine and brake limits
 	if FxDes > 0:
-		Fx = np.min( vehicle.powerLimit / Ux , FxDes)
+		if Ux == 0:
+			Fx = FxDes #set to FxDes to avoid divide by zero
+		else:
+			Fx = min( vehicle.powerLimit / Ux , FxDes)
 	else:
 		Fx = FxDes
 
@@ -201,6 +265,6 @@ def mapMatch(localState, globalState, path, matchType):
 def printStatus(localState, path, counter):
 	pctComplete = np.ceil( 100 * localState.s / path.s[-1] )
 	if np.mod(counter, 100) == 0:
-		#print("Simulation is %02f percent done") % pctComplete
-		print(pctComplete)
+		print("Simulation is %02d percent done" % pctComplete)
+		#print(pctComplete)
 		#print("Distance Along Path is %04d meters") % localState.s

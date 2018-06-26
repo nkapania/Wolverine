@@ -18,7 +18,7 @@ class LaneKeepingController():
 		self.kSpeed = 1000.0 #Speed proportional gain - N / (m/s)
 		self.alphaFlim = 7.0 * np.pi / 180 #steering limits for feedforward controller
 		self.alphaRlim = 5.0 * np.pi / 180 #steering limits for feedforward controller
-
+		
 		#Initialize force lookup tables for feedforward
 		numTableValues = 250
 
@@ -43,9 +43,11 @@ class LaneKeepingController():
 
 	def updateInput(self, localState, controlInput):
 		delta, deltaFFW, deltaFB, K = _lanekeeping(self, localState)
-		Fx = _speedTracking(self, localState)
+		Fx, UxDes = _speedTracking(self, localState)
 		controlInput.update(delta, Fx)
-		return controlInput, K
+		auxVars = (K, UxDes)
+
+		return controlInput, auxVars
 
 
 
@@ -95,7 +97,7 @@ def _speedTracking(sim, localState):
 	FxFFW = m*AxDes #+ np.sign(Ux)*fdrag*Ux^2 + frr*sign(Ux); # Feedforward
 	FxFB = -sim.kSpeed*(Ux - UxDes) # Feedback
 	FxCommand = FxFFW + FxFB
-	return FxCommand
+	return FxCommand, UxDes
 
 
 def _getDeltaFB(sim, localState, betaFFW):
