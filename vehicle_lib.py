@@ -1,12 +1,11 @@
 import numpy as np
-import tiremodels as tm
+import tiremodel_lib as tm
 #Defines a vehicle class, with full parameters
 
 #Defaults to shelley variables
 class Vehicle:
 	def __init__(self): 
 		
-		self.tireType = tireType
 		self.a = 1.0441 #CG to front wheelbase [m]
 		self.b = 1.4248 #CG to rear wheelbase [m] 
 		self.m = 1512.4 #vehicle mass (kg)
@@ -26,19 +25,4 @@ class Vehicle:
 		self.Kx = 3000.0; #Speed tracking gain
 		self.maxSpeed = 99
 		self.powerLimit = 16000.0 #Watts
-
-		# if tireType is "linear":
-		#  	self.FyFtable = -self.Cf*self.alphaFtable
-		#  	self.FyRtable = -self.Cr*self.alphaRtable
-			
-		# elif tireType is "nonlinear":
-		#  	self.FyFtable = tm.fiala(self.Cf, self.muF, self.muF, self.alphaFtable, self.FzF)
-		#  	self.FyRtable = tm.fiala(self.Cr, self.muR, self.muR, self.alphaRtable, self.FzR)
-
-		# else:
-		# 	print("Accepted tire types are linear or nonlinear") 
-
-
-
-
 

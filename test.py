@@ -4,7 +4,6 @@ import tiremodel_lib
 import velocityprofile_lib 
 import path_lib 
 import sim_lib
-import analysis_lib
 import controllers
 
 #Create vehicle object
@@ -20,12 +19,16 @@ speedProfile = velocityprofile_lib.VelocityProfile("racing")
 speedProfile.generate(shelley, oval)
 
 #Create controller object - use lanekeeping
-controller = LaneKeepingController(oval, shelley, speedProfile)
+controller = controllers.LaneKeepingController(oval, shelley, speedProfile)
 
+force = controller.FyFtable
+alpha = controller.alphaFtable
 
+#print(force.shape)
+#print(alpha.shape)
 
-bikeSim = sim_lib.Simulation(oval, shelley, speedProfile)
+bikeSim = sim_lib.Simulation(oval, shelley, speedProfile, controller)
 bikeSim.simulate()
-bikeSim.plotSimResults()
+#bikeSim.plotSimResults()
 
 
