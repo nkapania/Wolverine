@@ -47,7 +47,8 @@ class Simulation:
 			#Append counter and print to screen
 			counter = counter + 1
 			printStatus(localState, self.path, counter)
-			
+			#print(localState.s)
+			#print(self.path.s[-1])
 
 
 
@@ -57,6 +58,7 @@ class Simulation:
 			log.append('t',counter*self.ts)
 			log.append('Ux',localState.Ux)
 			log.append('s', localState.s)
+			log.append('e', localState.e)
 			log.append('UxDes', UxDes) 
 			log.append('posE', globalState.posE)
 			log.append('posN', globalState.posN)
@@ -73,8 +75,10 @@ class Simulation:
 	def checkForTermination(self, localState, counter):
 
 		#Check if we have ended the simulation
-		if localState.s > self.path.s[-1] - 0.55: #Stop simulation a little before end of path
+		if localState.s > (self.path.s[-1] - 0.55): #Stop simulation a little before end of path
 			self.isRunning = False
+			runTime = counter * sim.ts
+			print("Simulation complete - total time %02d sec" %runTime) 
 
 		#Check if we have gone off the track	
 		if abs(localState.e) > 5.0:

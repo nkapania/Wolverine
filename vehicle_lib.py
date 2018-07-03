@@ -22,7 +22,7 @@ class Vehicle:
 		self.h = 0.75   #Distance from the ground
 		self.brakeTimeDelay = 0.25 #Seconds
 		self.rollResistance = 255.0 #Newtons
-		self.Kx = 3000.0; #Speed tracking gain
 		self.maxSpeed = 99
 		self.powerLimit = 16000.0 #Watts
+		self.dragCoeff = 0.3638 #N / (m/s)^2
 

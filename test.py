@@ -21,17 +21,16 @@ speedProfile.generate(shelley, oval)
 #Create controller object - use lanekeeping
 controller = controllers.LaneKeepingController(oval, shelley, speedProfile)
 
+
 #simulate
 bikeSim = sim_lib.Simulation(oval, shelley, speedProfile, controller)
 logFile = bikeSim.simulate()
 
 
-#analyze data
-#plt.plot(logFile['t'], logFile['UxDes'])
-#plt.plot(logFile['t'], logFile['Ux'])
+# plt.plot(oval.posE, oval.posN)
+# plt.axis("equal")
+# plt.plot(logFile['posE'], logFile['posN'])
 
-plt.plot(oval.posE, oval.posN)
-plt.axis("equal")
-plt.plot(logFile['posE'], logFile['posN'])
-
+plt.plot(logFile['s'], logFile['e'])
 plt.show()
+
