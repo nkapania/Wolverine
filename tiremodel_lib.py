@@ -30,8 +30,8 @@ def coupledTireForces(alphaF, alphaR,  FxF, FxR, vehicle):
 	Cf = vehicle.Cf
 	Cr = vehicle.Cr
 
-	FyF = _coupledTire(alphaF, FxF, FzF, muF, muF, Cf)
-	FyR = _coupledTire(alphaR, FxR, FzR, muR, muR, Cr)
+	FyF, zetaF = _coupledTire(alphaF, FxF, FzF, muF, muF, Cf)
+	FyR, zetaR = _coupledTire(alphaR, FxR, FzR, muR, muR, Cr)
 
 	return FyF, FyR
 
@@ -40,7 +40,8 @@ def coupledTireForces(alphaF, alphaR,  FxF, FxR, vehicle):
 def _coupledTire(alpha, Fx, Fz, muS, muP, C):
 	if (muP * Fz) ** 2 > Fx ** 2: 
 		arg = max ((muP * Fz) **2 - Fx ** 2, 0)  #check for negative values
-		zeta = np.sqrt( arg / (muP*Fz) )
+		zeta = np.sqrt(arg) / (muP*Fz) 	
+		
 	else:
 		zeta = 0
 
@@ -53,11 +54,12 @@ def _coupledTire(alpha, Fx, Fz, muS, muP, C):
 		cubicTerm  = - C**3 *np.tan(alpha)**3 * (1 - 2*muS / (3*muP) ) / ( 9* muP**2 * zeta**2 * Fz **2 ) 
 		Fy = linearTerm + quadTerm + cubicTerm
 
+		#Fy = -C*np.tan(alpha)+(C)**2/(3*zeta*muP*Fz)*(2-muS/muP)*abs(np.tan(alpha))*np.tan(alpha)-(C)**3/(9*(muP)**2*(zeta*Fz)**2)*(np.tan(alpha))**3*(1-2*muS/(3*muP) )
+
 	else:
 		Fy = - zeta * muS * Fz * np.sign(alpha) 
 
-	return Fy
-
+	return Fy, zeta
 
 
 

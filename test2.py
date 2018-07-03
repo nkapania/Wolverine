@@ -8,6 +8,9 @@ import controllers
 import numpy as np
 from numpy import genfromtxt
 
+#Test harness to check that PySim tracks MATLAB simulation
+
+
 
 #Create vehicle object
 shelley = vehicle_lib.Vehicle()
@@ -59,6 +62,9 @@ FxFFW = x[:,20]
 FxST = x[:,21]
 FxF  = x[:,22]
 FxR  = x[:,23]
+Fx = FxF + FxR
+FyF = x[:,24]
+FyR = x[:,25]
 
 delta_sim = np.zeros( delta.shape )
 deltaFFW_sim = np.zeros( deltaFFW.shape )
@@ -76,22 +82,37 @@ FxFFW_sim = np.zeros( UxDesired.shape )
 FxFB_sim = np.zeros( UxDesired.shape )
 FxF_sim = np.zeros ( UxDesired.shape )
 FxR_sim = np.zeros ( UxDesired.shape ) 
-
+alphaF_sim = np.zeros ( UxDesired.shape )
+alphaR_sim = np.zeros ( UxDesired.shape )
+FyF_sim = np.zeros ( UxDesired.shape )
+FyR_sim = np.zeros ( UxDesired.shape )
 
 localState = sim_lib.LocalState()
-
+controlInput = controllers.ControlInput()
 
 for i in range( delta.size ):
 	localState.update(Ux[i], Uy[i], r[i], e[i], deltaPsi[i], s[i])
-	FxF_sim[i], FxR_sim[i] = sim_lib.getFx(FxDes[i], Ux[i], shelley)
+	controlInput.update(delta[i], Fx[i]) 
+	alphaF_sim[i], alphaR_sim[i] = sim_lib.getSlips(localState, shelley, controlInput)
+	FyF_sim[i], FyR_sim[i] = tiremodel_lib.coupledTireForces(alphaF[i], alphaR[i], FxF[i], FxR[i], shelley)
 
 
 
+alpha = 5 * np.pi / 180
+Fx = 5000.0
+Fz = shelley.FzF
+muS = shelley.muF
+muP = shelley.muF
+C = shelley.Cf
+
+Fy, zeta = tiremodel_lib._coupledTire(alpha, Fx, Fz, muS, muP, C)
 
 
 
-plt.plot(FxR)	
-plt.plot(FxR_sim, linestyle = '--')
-plt.legend(['MATLAB','PySim'])
-plt.show()
+# plt.plot(FyR)		
+# plt.plot(FyR_sim, linestyle = '--')
+# plt.legend(['MATLAB','PySim'])
+# plt.show()
 
+print(Fy)
+print(zeta)

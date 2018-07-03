@@ -49,6 +49,14 @@ class LaneKeepingController():
 		return controlInput, auxVars
 
 
+class ControlInput:
+	def __init__(self):
+		self.delta = 0.0
+		self.Fx = 0.0
+
+	def update(self, delta, Fx):
+		self.delta = delta
+		self.Fx = Fx
 
 
 
@@ -131,14 +139,6 @@ def _getDeltaFFW(sim, localState, K):
 
 	return deltaFFW, betaFFW, FyFdes, FyRdes, alphaFdes, alphaRdes		
 
-class ControlInput:
-	def __init__(self):
-		self.delta = 0.0
-		self.Fx = 0.0
-
-	def update(self, delta, Fx):
-		self.delta = delta
-		self.Fx = Fx
 
 
 
