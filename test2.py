@@ -57,6 +57,8 @@ alphaFdes = x[:,18]
 alphaRdes = x[:,19]
 FxFFW = x[:,20]
 FxST = x[:,21]
+FxF  = x[:,22]
+FxR  = x[:,23]
 
 delta_sim = np.zeros( delta.shape )
 deltaFFW_sim = np.zeros( deltaFFW.shape )
@@ -72,6 +74,8 @@ FxDes_sim = np.zeros( FxDes.shape )
 UxDes_sim = np.zeros( UxDesired.shape )
 FxFFW_sim = np.zeros( UxDesired.shape )
 FxFB_sim = np.zeros( UxDesired.shape )
+FxF_sim = np.zeros ( UxDesired.shape )
+FxR_sim = np.zeros ( UxDesired.shape ) 
 
 
 localState = sim_lib.LocalState()
@@ -79,13 +83,15 @@ localState = sim_lib.LocalState()
 
 for i in range( delta.size ):
 	localState.update(Ux[i], Uy[i], r[i], e[i], deltaPsi[i], s[i])
-	FxDes_sim[i], UxDes_sim[i], FxFFW_sim[i], FxFB_sim[i] = controllers._speedTracking(controller, localState)
+	FxF_sim[i], FxR_sim[i] = sim_lib.getFx(FxDes[i], Ux[i], shelley)
 
 
 
 
-plt.plot(FxDes)	
-plt.plot(FxDes_sim, linestyle = '--')
+
+
+plt.plot(FxF)	
+plt.plot(FxF_sim, linestyle = '--')
 plt.legend(['MATLAB','PySim'])
 plt.show()
 

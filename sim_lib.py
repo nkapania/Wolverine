@@ -247,7 +247,7 @@ def getFx(FxDes, Ux, vehicle):
 		if Ux == 0:
 			Fx = FxDes #set to FxDes to avoid divide by zero
 		else:
-			Fx = min( vehicle.powerLimit / Ux , FxDes)
+			Fx = min( vehicle.powerLimit / Ux - 0.7 * Ux ** 2 - 300, FxDes)
 	else:
 		Fx = FxDes
 

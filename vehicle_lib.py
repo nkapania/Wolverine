@@ -12,7 +12,7 @@ class Vehicle:
 		self.Cf = 160000.0 #vehicle cornering stiffness (N)
 		self.Cr = 180000.0 #vehicle cornering stiffness (N)
 		self.Iz  = 2.25E3  #vehicle inertia (kg  m^2)
-		self.muF = .97     #front friction coeff
+		self.muF = 0.97     #front friction coeff
 		self.muR = 1.02    #rear friction coeff
 		self.g = 9.81      #m/s^2, accel due to gravity
 		self.L = self.a + self.b #total vehicle length, m
@@ -23,6 +23,6 @@ class Vehicle:
 		self.brakeTimeDelay = 0.25 #Seconds
 		self.rollResistance = 255.0 #Newtons
 		self.maxSpeed = 99
-		self.powerLimit = 16000.0 #Watts
+		self.powerLimit = 160000.0 #Watts
 		self.dragCoeff = 0.3638 #N / (m/s)^2
 
