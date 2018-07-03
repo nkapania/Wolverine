@@ -16,7 +16,7 @@ class Simulation:
 		self.isRunning = True
 		self.physics = "bicycle"
 		self.logger = Logger()
-		self.ts = 0.01
+		self.ts = 0.01 #simulation time in seconds
 		self.mapMatchType = "euler"
 		
 		
@@ -36,7 +36,7 @@ class Simulation:
 			localState = mapMatch(localState, globalState, self.path, self.mapMatchType)	
 
 			#Check to see if we should terminate
-			self.checkForTermination(localState, counter)
+			self.checkForTermination(localState, counter, log)
 
 			#Calculate controller inputs
 			controlInput, auxVars = self.controller.updateInput(localState, controlInput)
@@ -62,6 +62,7 @@ class Simulation:
 			log.append('UxDes', UxDes) 
 			log.append('posE', globalState.posE)
 			log.append('posN', globalState.posN)
+			log.append('r', localState.r)
 			log.incrementCounter()
 
 
@@ -72,13 +73,13 @@ class Simulation:
 
 
 
-	def checkForTermination(self, localState, counter):
+	def checkForTermination(self, localState, counter, log):
 
 		#Check if we have ended the simulation
 		if localState.s > (self.path.s[-1] - 0.55): #Stop simulation a little before end of path
 			self.isRunning = False
-			runTime = counter * sim.ts
-			print("Simulation complete - total time %02d sec" %runTime) 
+			runTime = counter * self.ts
+			print("Simulation complete - total time %.2f sec" %runTime) 			
 
 		#Check if we have gone off the track	
 		if abs(localState.e) > 5.0:
@@ -186,7 +187,7 @@ def  bicycleModel(vehicle, controlInput, localState, globalState, matchType, ts,
 	FyF, FyR = tm.coupledTireForces(alphaF, alphaR,  FxF, FxR, vehicle)
 
     
-	#Calculate state derivatives
+	#Calculate state derivatives and update
 	dUy = (FyF + FyR) / m - r*Ux
 	dr  = (a*FyF - b*FyR) / Iz
 	dUx = Uy * r + (FxF + FxR - FyF * delta) / m
@@ -200,7 +201,7 @@ def  bicycleModel(vehicle, controlInput, localState, globalState, matchType, ts,
 	dN =   Ux * np.cos(psi) - Uy * np.sin(psi)
 	dotPsi = r 
 
-    #update states
+    #update states with Euler integration
 	Uy = Uy + ts * dUy
 	r  = r + ts * dr
 	Ux = Ux + ts * dUx

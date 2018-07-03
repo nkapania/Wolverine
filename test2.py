@@ -98,21 +98,7 @@ for i in range( delta.size ):
 
 
 
-alpha = 5 * np.pi / 180
-Fx = 5000.0
-Fz = shelley.FzF
-muS = shelley.muF
-muP = shelley.muF
-C = shelley.Cf
-
-Fy, zeta = tiremodel_lib._coupledTire(alpha, Fx, Fz, muS, muP, C)
-
-
-
-# plt.plot(FyR)		
-# plt.plot(FyR_sim, linestyle = '--')
-# plt.legend(['MATLAB','PySim'])
-# plt.show()
-
-print(Fy)
-print(zeta)
+plt.plot(FyF)		
+plt.plot(FyF_sim, linestyle = '--')
+plt.legend(['MATLAB','PySim'])
+plt.show()

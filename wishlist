@@ -1,8 +1,8 @@
+- Generalize bikemodel into framework with derivatives, etc. 
 - Get rid of interp calls in loops for speed
 - Avoid K coming in as input
 - How to handle divide by zero elegantly
 - Better understanding of data types in python
 
 Functions to test:
-Coupled Tire Forces
 State update equations
