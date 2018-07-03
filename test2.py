@@ -90,8 +90,8 @@ for i in range( delta.size ):
 
 
 
-plt.plot(FxF)	
-plt.plot(FxF_sim, linestyle = '--')
+plt.plot(FxR)	
+plt.plot(FxR_sim, linestyle = '--')
 plt.legend(['MATLAB','PySim'])
 plt.show()
 
