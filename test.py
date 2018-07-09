@@ -1,31 +1,31 @@
 import matplotlib.pyplot as plt
-import vehicle_lib 
-import tiremodel_lib 
-import velocityprofile_lib 
-import path_lib 
-import sim_lib
-import controllers
+from vehicle_lib import *
+from tiremodel_lib import *
+from velocityprofile_lib import * 
+from path_lib import *
+from sim_lib import *
+from controllers import *
 from numpy import genfromtxt
 
 
 #Create vehicle object
-shelley = vehicle_lib.Vehicle()
+shelley = Vehicle()
 
 #Create path object
-oval = path_lib.Path()
+oval = Path()
 oval.loadFromCSV("maps/simpleRace.csv") #initialize by loading already defined map
 oval.setFriction(0.7)
 
 #Create speed profile
-speedProfile = velocityprofile_lib.VelocityProfile("racing")
+speedProfile = VelocityProfile("racing")
 speedProfile.generate(shelley, oval)
 
 #Create controller object - use lanekeeping
-controller = controllers.LaneKeepingController(oval, shelley, speedProfile)
+controller = LaneKeepingController(oval, shelley, speedProfile)
 
 
 #simulate
-bikeSim = sim_lib.Simulation(oval, shelley, speedProfile, controller)
+bikeSim = Simulation(oval, shelley, speedProfile, controller)
 logFile = bikeSim.simulate()
 
 
@@ -63,6 +63,7 @@ FyR = x[:,25]
 
 
 plt.close("all")
+
 plt.figure()
 plt.plot(logFile['s'], logFile['e'])
 plt.plot(s, e)
@@ -70,19 +71,44 @@ plt.xlabel('Distance Along Path (m)')
 plt.ylabel('Lateral Error (m)')
 plt.legend(['PySim', 'MATLAB'])
 
-plt.figure()
-plt.plot(logFile['s'], logFile['UxDes'])
-plt.plot(s, UxDesired)
-plt.xlabel('Time (s)')
-plt.ylabel('Distance Along Path (m)')
-plt.legend(['PySim', 'MATLAB'])
+# plt.figure()
+# plt.plot(logFile['s'], logFile['UxDes'])
+# plt.plot(s, UxDesired)
+# plt.xlabel('Time (s)')
+# plt.ylabel('Distance Along Path (m)')
+# plt.legend(['PySim', 'MATLAB'])
 
-plt.figure()
-plt.plot(logFile['s'], logFile['r'])
-plt.plot(s, r)
-plt.xlabel('Distance Along Path (s)')
-plt.ylabel('Lateral Error (m)')
-plt.legend(['PySim', 'MATLAB'])
+# plt.figure()
+# plt.plot(logFile['s'], logFile['r'])
+# plt.plot(s, r)
+# plt.xlabel('Distance Along Path (m)')
+# plt.ylabel('Lateral Error (m)')
+# plt.legend(['PySim', 'MATLAB'])
 
-plt.show()
+# plt.figure()
+# plt.plot(logFile['s'], logFile['Uy'])
+# plt.plot(s, Uy)
+# plt.xlabel('Distance Along Path (m)')
+# plt.ylabel('Lateral Velocity (m / s)')
+# plt.legend(['PySim', 'MATLAB'])
+
+# plt.figure()
+# plt.plot(logFile['posE'], logFile['posN'])
+# plt.plot(oval.posE, oval.posN)
+# plt.xlabel('East (m)')
+# plt.ylabel('North (m)')
+# plt.legend(['Actual', 'Desired'])
+# plt.grid(True)
+# plt.axis("equal")
+
+# plt.figure()
+# plt.plot(logFile['s'], logFile['Ux'])
+# plt.plot(s, Ux)
+# plt.xlabel('Distance Along Path (m)')
+# plt.ylabel('Vehicle Speed (m)')
+# plt.legend(['PySim', 'MATLAB'])
+# plt.grid(True)
+# plt.axis("equal")
+
+
 

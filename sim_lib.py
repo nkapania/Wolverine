@@ -63,6 +63,7 @@ class Simulation:
 			log.append('posE', globalState.posE)
 			log.append('posN', globalState.posN)
 			log.append('r', localState.r)
+			log.append('Uy', localState.Uy)
 			log.incrementCounter()
 
 
