@@ -118,8 +118,21 @@ class LocalState:
 
 	def updateMapMatchStates(self, e, dPsi, s):
 		self.e = e
-		self.dPsi = dPsi
+		self.deltaPsi = dPsi
 		self.s = s
+
+	def updateVelocityState(self, Ux, Uy, r):
+		self.Ux = Ux
+		self.Uy = Uy
+		self.r  = r
+
+	def printState(self):
+		print("Ux is %.2f" %self.Ux) 
+		print("Uy is %.2f" %self.Uy)
+		print("r is %.2f" %self.r)
+		print("e is %.2f" %self.e)
+		print("deltaPsi is %.2f" %self.deltaPsi)
+		print("s is %.2f" %self.s)
 
 		
 class GlobalState:
@@ -175,8 +188,8 @@ class MapMatch:
 			return
 
 		elif self.matchType is "closest":
-			e, s, dPsi = mapMatch(self, globalState.posE, globalState.posN, globalState.psi)
-			localState.updateMapmatchStates(e, dPsi, s)
+			e, s, dPsi = self.mapMatch(globalState.posE, globalState.posN, globalState.psi)
+			localState.updateMapMatchStates(e, dPsi, s)
 			return
 
 		else:
@@ -184,9 +197,7 @@ class MapMatch:
 
 	def mapMatch(self, posE, posN, psi):
 		pEN = [posE, posN]
-		pSE = convertToLocalPath(pEN)
-
-		self.seed = pSE
+		pSE = self.convertToLocalPath(pEN)
 
 		#avoid small bug where we go to negative at start of path
 		if pSE[0] < 0:
@@ -195,22 +206,28 @@ class MapMatch:
 			s = pSE[0]
 
 		e = pSE[1]
-		psiDes = np.interp(s, self.path.s, self.path.roadPsi)
+		psiDes = np.interp(s, np.squeeze(self.path.s), np.squeeze(self.path.roadPsi))
 		dPsi = psi - psiDes
 
 		return e, s, dPsi
 
 	def convertToLocalPath(self, pEN):
-		path = self.path
-		m = path.s.size  #number of points in the map
+		#reshape to rank 0 arrays
+		posE = np.squeeze(self.path.posE)
+		posN = np.squeeze(self.path.posN)
+		roadPsi = np.squeeze(self.path.roadPsi)
+		s = np.squeeze(self.path.s)
+
+
+		m = posE.size  #number of points in the map
 
 		if self.firstSearch is True:
 			dist = np.zeros([m, 1]) #array of distances
 
 			#go through all points in the map
 			for i in range(m):
-				pMap = [ path.posE[i], path.posN[i] ]
-				dist[i] = np.norm(pEN - pMap)
+				pMap = [ posE[i], posN[i] ]
+				dist[i] = np.linalg.norm(np.array(pEN) - np.array(pMap))
 
 
 			# Get closest point and the corresponding distance
@@ -221,12 +238,16 @@ class MapMatch:
 			#To determine sign of e, cross heading vector with vector from point to road
 	        #Append vectors with 0 to get 3 dims for convenient use of cross function
 	        	
-			headingVector  = [-np.sin(path.roadPsi[idx]) , np.cos(path.Psi[idx]) , 0]
-			positionVector = pEN.append(0) - [path.posE(idx), path.posN(idx) , 0]
+	        #some weird stuff here to get both in same format for cross product	
+			headingVector  = [-np.sin(roadPsi[idx]) , np.cos(roadPsi[idx]) , 0]
+			pENaugmented = np.array([pEN[0], pEN[1], 0])	
+			pathVector = [posE[idx], posN[idx] , 0]
 
+			positionVector = pENaugmented -  pathVector
 			crss = np.cross(headingVector, positionVector)
 
-			pSE[0] = path.s[idx]	
+			pSE = np.zeros(2)
+			pSE[0] = s[idx]	
 			pSE[1] = np.sign(crss[2]) * absE
 
 			self.firstSearch = False #next search use the seed
@@ -242,11 +263,12 @@ class MapMatch:
 			stillDecreasing = True
 
 			while stillDecreasing:
-				if forwardInd + 1 <= m-2:
-					pMap1 = [ path.posE[forwardInd], path.posN[forwardInd] ]
-					pMap2 = [ path.posE[forwardInd+1], path.posN[forwardInd+1] ]
 
-					currentPair = np.norm(pEN - pMap1) + np.norm( pEN - pMap2) 
+				if forwardInd + 1 <= m-2:
+					pMap1 = [ posE[forwardInd], posN[forwardInd] ]
+					pMap2 = [ posE[forwardInd+1], posN[forwardInd+1] ]
+
+					currentPair = np.linalg.norm( np.array(pEN) - np.array(pMap1) ) + np.linalg.norm( np.array(pEN) - np.array(pMap2)) 
 				else:
 					currentPair = 999999.0 #Inf
 
@@ -264,15 +286,15 @@ class MapMatch:
 
 			while stillDecreasing:
 				if (backwardInd - 1) >= 1:
-					pMap1 = [ path.posE[backwardInd], path.posN[backwardInd] ]
-					pMap2 = [ path.posE[backwardInd -1], path.posN[backwardInd -1] ]
+					pMap1 = [ posE[backwardInd], posN[backwardInd] ]
+					pMap2 = [ posE[backwardInd -1], posN[backwardInd -1] ]
 
-					currentPair = np.norm(pEN - pMap1) + np.norm(pEN - pMap2)
+					currentPair = np.linalg.norm(np.array(pEN) - np.array(pMap1)) + np.linalg.norm(np.array(pEN) - np.array(pMap2))
 
 				else:
 					currentPair = 999999.0 #Inf
 
-				stillDecreasing = curentPair < lastPair
+				stillDecreasing = currentPair < lastPair
 				if stillDecreasing:
 					lastPair = currentPair
 					backwardInd = backwardInd - 1
@@ -284,26 +306,31 @@ class MapMatch:
 				highSind = backwardInd
 
 			else:
-				lowSInd = forwardInd
+				lowSind = forwardInd
 				highSind = forwardInd + 1
 
 			#do not understand this math - need to think about further
-			a = np.norm(pEN - [path.roadE(lowSInd) , path.roadN(lowSInd)])
-			b = np.norm(pEN - [path.roadE(highSInd), path.roadN(highSInd)])
-			c = np.norm( [world.roadE(lowSInd), world.roadN(lowSInd) ]- [world.roadE(highSInd), world.roadN(highSInd)] );
+
+			a = np.linalg.norm( np.array(pEN) - np.array([posE[lowSind] , posN[lowSind]]) )
+			b = np.linalg.norm( np.array(pEN) - np.array([posE[highSind], posN[highSind]]))
+			c = np.linalg.norm( np.array([posE[lowSind], posN[lowSind] ])- np.array([posE[highSind], posN[highSind]]) );
          
 			deltaS = (a**2+c**2-b**2)/(2*c)
 			absE = np.sqrt(np.abs(a**2-deltaS**2))
 		
-			#compute heading vector
-			headingVector = [ -np.sin(path.roadPsi(lowSInd)), np.cos(path.roadPsi(lowSInd)), 0]
-			positionVector = pEN.append(0) - [path.roadE(lowSInd), path.roadN(lowSInd), 0]
+
+			headingVector = [ -np.sin(roadPsi[lowSind]), np.cos(roadPsi[lowSind]), 0]
+			pENaugmented = np.array([pEN[0], pEN[1], 0])
+			pathVector = np.array([posE[lowSind], posN[lowSind], 0])
+
+			positionVector = pENaugmented - pathVector
 			crss = np.cross(headingVector, positionVector)
         	
-			pSE[0] = path.s(lowSInd) + deltaS
+			pSE = np.zeros(2)
+			pSE[0] = s[lowSind] + deltaS
 			pSE[1] = np.sign(crss[2]) * absE
 
-			self.seed = lowSInd
+			self.seed = lowSind
 
 			return pSE
 

@@ -1,4 +1,5 @@
 - Change auxvars from tuple to dict
+- Switch world to rank 0 arrays
 - Generalize bikemodel into framework with derivatives, etc. 
 - Get rid of interp calls in loops for speed
 - Avoid K coming in as input

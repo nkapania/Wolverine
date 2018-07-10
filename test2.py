@@ -65,6 +65,9 @@ FxR  = x[:,23]
 Fx = FxF + FxR
 FyF = x[:,24]
 FyR = x[:,25]
+posE = x[:,26]
+posN = x[:,27]
+psi = x[:,28]
 
 delta_sim = np.zeros( delta.shape )
 deltaFFW_sim = np.zeros( deltaFFW.shape )
@@ -86,19 +89,34 @@ alphaF_sim = np.zeros ( UxDesired.shape )
 alphaR_sim = np.zeros ( UxDesired.shape )
 FyF_sim = np.zeros ( UxDesired.shape )
 FyR_sim = np.zeros ( UxDesired.shape )
+s_sim = np.zeros ( UxDesired.shape )
+e_sim = np.zeros ( UxDesired.shape )
+dPsi_sim = np.zeros ( UxDesired.shape )
 
+globalState = sim_lib.GlobalState(oval)
 localState = sim_lib.LocalState()
 controlInput = controllers.ControlInput()
 
-for i in range( delta.size ):
-	localState.update(Ux[i], Uy[i], r[i], e[i], deltaPsi[i], s[i])
-	controlInput.update(delta[i], Fx[i]) 
-	alphaF_sim[i], alphaR_sim[i] = sim_lib.getSlips(localState, shelley, controlInput)
-	FyF_sim[i], FyR_sim[i] = tiremodel_lib.coupledTireForces(alphaF[i], alphaR[i], FxF[i], FxR[i], shelley)
+mapM = sim_lib.MapMatch(oval, "closest")
+
+m = s.size
+
+for i in range(m):
+	globalState.update( posE[i], posN[i], psi[i])
+	mapM.localize(localState, globalState)
+	s_sim[i] = localState.s
+	e_sim[i] = localState.e
 
 
+plt.close("all")
+plt.figure()
+plt.plot(e_sim)
+plt.plot(e)
+plt.legend(['PySim', 'MATLAB'])
 
-plt.plot(FyF)		
-plt.plot(FyF_sim, linestyle = '--')
-plt.legend(['MATLAB','PySim'])
 plt.show()
+
+
+
+
+
