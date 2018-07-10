@@ -62,14 +62,13 @@ FyF = x[:,24]
 FyR = x[:,25]
 
 
-plt.close("all")
-
-plt.figure()
-plt.plot(logFile['s'], logFile['e'])
-plt.plot(s, e)
-plt.xlabel('Distance Along Path (m)')
-plt.ylabel('Lateral Error (m)')
-plt.legend(['PySim', 'MATLAB'])
+# plt.close("all")
+# plt.figure()
+# plt.plot(logFile['s'], logFile['e'])
+# plt.plot(s, e)
+# plt.xlabel('Distance Along Path (m)')
+# plt.ylabel('Lateral Error (m)')
+# plt.legend(['PySim', 'MATLAB'])
 
 # plt.figure()
 # plt.plot(logFile['s'], logFile['UxDes'])
@@ -110,5 +109,4 @@ plt.legend(['PySim', 'MATLAB'])
 # plt.grid(True)
 # plt.axis("equal")
 
-
-
+# plt.show()

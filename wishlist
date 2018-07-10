@@ -1,3 +1,4 @@
+- Change auxvars from tuple to dict
 - Generalize bikemodel into framework with derivatives, etc. 
 - Get rid of interp calls in loops for speed
 - Avoid K coming in as input

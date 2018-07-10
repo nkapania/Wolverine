@@ -46,7 +46,7 @@ class LaneKeepingController():
 		controlInput.update(delta, Fx)
 		auxVars = (K, UxDes)
 
-		return controlInput, auxVars
+		return auxVars
 
 
 class ControlInput:

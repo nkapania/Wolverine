@@ -2,7 +2,7 @@ import numpy as np
 import tiremodel_lib as tm
 import vehicle_lib
 import path_lib
-import controllers
+from controllers import *
 import sys
 
 #Defines a simulation class and a state class
@@ -21,39 +21,39 @@ class Simulation:
 		
 		
 	def simulate(self):
-		#initialize states
+		#initialize states and instantiate objects
 		Ux0 = self.profile.Ux[0] #start car at the correct velocity
 		localState = LocalState(Ux0)
 		globalState = GlobalState(self.path)
-		controlInput = controllers.ControlInput()
-		counter = 0
+		controlInput = ControlInput()
 		log = Logger()
-		
+		mapMatch = MapMatch(self.path, self.mapMatchType)
+
+		counter = 0
 
 		while self.isRunning:
 
 			#Perform localization
-			localState = mapMatch(localState, globalState, self.path, self.mapMatchType)	
+			mapMatch.localize(localState, globalState)
 
 			#Check to see if we should terminate
 			self.checkForTermination(localState, counter, log)
 
 			#Calculate controller inputs
-			controlInput, auxVars = self.controller.updateInput(localState, controlInput)
+			auxVars = self.controller.updateInput(localState, controlInput)
 
 			#Update state
-			localState, globalState = self.updateState(controlInput, localState, globalState, auxVars)
+			self.updateState(controlInput, localState, globalState, auxVars)
 
 			#Append counter and print to screen
 			counter = counter + 1
 			printStatus(localState, self.path, counter)
-			#print(localState.s)
-			#print(self.path.s[-1])
+
 
 
 
 			#save signals needed
-			K, UxDes = auxVars	#unpack auxillary variables
+			K, UxDes = auxVars	#unpack auxillary variables for debugging
 
 			log.append('t',counter*self.ts)
 			log.append('Ux',localState.Ux)
@@ -116,6 +116,11 @@ class LocalState:
 		self.deltaPsi = deltaPsi
 		self.s = s
 
+	def updateMapMatchStates(self, e, dPsi, s):
+		self.e = e
+		self.dPsi = dPsi
+		self.s = s
+
 		
 class GlobalState:
 	def __init__(self, path):
@@ -156,8 +161,151 @@ class Logger:
 		return self.data
 
 
+class MapMatch:
+	def __init__(self, path, matchType):
+		self.path = path
+		self.seed = 1 #index of map to take a guess
+		self.firstSearch = True #first time running search
+		self.matchType = matchType
 
 
+
+	def localize(self, localState, globalState):
+		if self.matchType is "euler":
+			return
+
+		elif self.matchType is "closest":
+			e, s, dPsi = mapMatch(self, globalState.posE, globalState.posN, globalState.psi)
+			localState.updateMapmatchStates(e, dPsi, s)
+			return
+
+		else:
+			sys.exit("invalid mapMatch Type")
+
+	def mapMatch(self, posE, posN, psi):
+		pEN = [posE, posN]
+		pSE = convertToLocalPath(pEN)
+
+		self.seed = pSE
+
+		#avoid small bug where we go to negative at start of path
+		if pSE[0] < 0:
+			s = 0
+		else:
+			s = pSE[0]
+
+		e = pSE[1]
+		psiDes = np.interp(s, self.path.s, self.path.roadPsi)
+		dPsi = psi - psiDes
+
+		return e, s, dPsi
+
+	def convertToLocalPath(self, pEN):
+		path = self.path
+		m = path.s.size  #number of points in the map
+
+		if self.firstSearch is True:
+				dist = np.zeros([m, 1]) #array of distances
+
+				#go through all points in the map
+				for i in range(m):
+					pMap = [ path.posE[i], path.posN[i] ]
+					dist[i] = np.norm(pEN - pMap)
+
+
+				# Get closest point and the corresponding distance
+				absE = min(dist)
+				idx = np.argmin(dist)
+
+				#Use cross product to get the signed error
+				#To determine sign of e, cross heading vector with vector from point to road
+	        	#Append vectors with 0 to get 3 dims for convenient use of cross function
+	        	
+				headingVector  = [-np.sin(path.roadPsi[idx]) , np.cos(path.Psi[idx]) , 0]
+				positionVector = pEN.append(0) - [path.posE(idx), path.posN(idx) , 0]
+
+				crss = np.cross(headingVector, positionVector)
+
+				pSE[0] = path.s[idx]	
+				pSE[1] = np.sign(crss[2]) * absE
+
+			self.firstSearch = False #next search use the seed
+			self.seed = idx
+
+			return pSE
+
+		if self.firstSearch is False:
+			#Go forward
+
+			lastPair = 9999999.0 #Inf
+			forwardInd = self.seed
+
+			stillDecreasing = True
+
+			while stillDecreasing:
+				if forwardInd + 1 <= m-2:
+					pMap1 = [ path.posE[forwardInd], path.posN[forwardInd] ]
+					pMap2 = [ path.posE[forwardInd+1], path.posN[forwardInd+1] ]
+
+					currentPair = np.norm(pEN - pMap1) + np.norm( pEN - pMap2) 
+				else:
+					currentPair = 999999.0 #Inf
+
+				stillDecreasing = currentPair < lastPair
+				if stillDecreasing:
+					lastPair = currentPair
+					forwardInd = forwardInd + 1
+
+			smallestForward = lastPair
+
+			#Go back
+			lastPair = 9999999.0 #inf
+			backwardInd = self.seed
+			stillDecreasing = True
+
+			while stillDecreasing:
+				if (backwardInd - 1) >= 1:
+					pMap1 = [ path.posE[backwardInd], path.posN[backwardInd] ]
+					pMap2 = [ path.posE[backwardInd -1], path.posN[backwardInd -1] ]
+
+					currentPair = np.norm(pEN - pMap1) + np.norm(pEN - pMap2)
+
+				else currentPair = 999999.0 #Inf
+
+				stillDecreasing = curentPair < lastPair
+				if stillDecreasing:
+					lastPair = currentPair
+					backwardInd = backwardInd - 1
+
+			smallestBackward = lastPair
+
+			if smallestBackward < smallestForward:
+				lowSind = backwardInd - 1
+				highSind = backwardInd
+
+			else:
+				lowSInd = forwardInd
+				highSind = forwardInd + 1
+
+			#do not understand this math - need to think about further
+			a = np.norm(pEN - [path.roadE(lowSInd) , path.roadN(lowSInd)])
+			b = np.norm(pEN - [path.roadE(highSInd), path.roadN(highSInd)])
+			c = np.norm( [world.roadE(lowSInd), world.roadN(lowSInd) ]- [world.roadE(highSInd), world.roadN(highSInd)] );
+         
+			deltaS = (a**2+c**2-b**2)/(2*c)
+			absE = np.sqrt(np.abs(a**2-deltaS**2))
+		
+			#compute heading vector
+			headingVector = [ -np.sin(path.roadPsi(lowSInd)), np.cos(path.roadPsi(lowSInd)), 0]
+			positionVector = pEN.append(0) - [path.roadE(lowSInd), path.roadN(lowSInd), 0]
+			crss = np.cross(headingVector, positionVector)
+        	
+			pSE[0] = path.s(lowSInd) + deltaS
+			pSE[1] = np.sign(crss[2]) * absE
+
+			self.seed = lowSInd
+
+			return pSE
 
 def  bicycleModel(vehicle, controlInput, localState, globalState, matchType, ts, K):
 	#Implementation of bicycle model with force derating, but no longitudinal dynamics
@@ -225,6 +373,14 @@ def  bicycleModel(vehicle, controlInput, localState, globalState, matchType, ts,
 
 
 
+
+
+
+
+
+
+
+
 def getSlips(localState, veh, controlInput):
 	Ux = localState.Ux
 	Uy = localState.Uy
@@ -258,15 +414,6 @@ def getFx(FxDes, Ux, vehicle):
 	FxR = Fx * vehicle.a / vehicle.L
 	return FxF, FxR
 
-
-#localization to frenet frame   
-def mapMatch(localState, globalState, path, matchType):
-		if matchType is "euler":
-			return localState
-
-		#to be implemented - embedded map matching
-		elif matchType is "embed":
-			sys.exit("Error - embedded not implemented yet")
 
 def printStatus(localState, path, counter):
 	pctComplete = np.ceil( 100 * localState.s / path.s[-1] )
