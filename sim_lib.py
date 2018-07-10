@@ -205,33 +205,32 @@ class MapMatch:
 		m = path.s.size  #number of points in the map
 
 		if self.firstSearch is True:
-				dist = np.zeros([m, 1]) #array of distances
+			dist = np.zeros([m, 1]) #array of distances
 
-				#go through all points in the map
-				for i in range(m):
-					pMap = [ path.posE[i], path.posN[i] ]
-					dist[i] = np.norm(pEN - pMap)
+			#go through all points in the map
+			for i in range(m):
+				pMap = [ path.posE[i], path.posN[i] ]
+				dist[i] = np.norm(pEN - pMap)
 
 
-				# Get closest point and the corresponding distance
-				absE = min(dist)
-				idx = np.argmin(dist)
+			# Get closest point and the corresponding distance
+			absE = min(dist)
+			idx = np.argmin(dist)
 
-				#Use cross product to get the signed error
-				#To determine sign of e, cross heading vector with vector from point to road
-	        	#Append vectors with 0 to get 3 dims for convenient use of cross function
+			#Use cross product to get the signed error
+			#To determine sign of e, cross heading vector with vector from point to road
+	        #Append vectors with 0 to get 3 dims for convenient use of cross function
 	        	
-				headingVector  = [-np.sin(path.roadPsi[idx]) , np.cos(path.Psi[idx]) , 0]
-				positionVector = pEN.append(0) - [path.posE(idx), path.posN(idx) , 0]
+			headingVector  = [-np.sin(path.roadPsi[idx]) , np.cos(path.Psi[idx]) , 0]
+			positionVector = pEN.append(0) - [path.posE(idx), path.posN(idx) , 0]
 
-				crss = np.cross(headingVector, positionVector)
+			crss = np.cross(headingVector, positionVector)
 
-				pSE[0] = path.s[idx]	
-				pSE[1] = np.sign(crss[2]) * absE
+			pSE[0] = path.s[idx]	
+			pSE[1] = np.sign(crss[2]) * absE
 
 			self.firstSearch = False #next search use the seed
 			self.seed = idx
-
 			return pSE
 
 		if self.firstSearch is False:
@@ -270,7 +269,8 @@ class MapMatch:
 
 					currentPair = np.norm(pEN - pMap1) + np.norm(pEN - pMap2)
 
-				else currentPair = 999999.0 #Inf
+				else:
+					currentPair = 999999.0 #Inf
 
 				stillDecreasing = curentPair < lastPair
 				if stillDecreasing:

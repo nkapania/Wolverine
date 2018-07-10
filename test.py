@@ -7,7 +7,6 @@ from sim_lib import *
 from controllers import *
 from numpy import genfromtxt
 
-
 #Create vehicle object
 shelley = Vehicle()
 
@@ -27,6 +26,7 @@ controller = LaneKeepingController(oval, shelley, speedProfile)
 #simulate
 bikeSim = Simulation(oval, shelley, speedProfile, controller)
 logFile = bikeSim.simulate()
+
 
 
 
