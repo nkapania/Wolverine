@@ -26,7 +26,7 @@ controller = LaneKeepingController(oval, shelley, speedProfile)
 
 
 #simulate
-mapMatchType = "euler"
+mapMatchType = "closest"
 bikeSim = Simulation(oval, shelley, speedProfile, controller, mapMatchType)
 logFile = bikeSim.simulate()
 
