@@ -6,6 +6,7 @@ from path_lib import *
 from sim_lib import *
 from controllers import *
 from numpy import genfromtxt
+import time
 
 #Create vehicle object
 shelley = Vehicle()
@@ -16,7 +17,6 @@ oval.loadFromCSV("maps/simpleRace.csv") #initialize by loading already defined m
 oval.setFriction(0.7)
 
 
-
 #Create speed profile
 speedProfile = VelocityProfile("racing")
 speedProfile.generate(shelley, oval)
@@ -24,55 +24,46 @@ speedProfile.generate(shelley, oval)
 # #Create controller object - use lanekeeping
 controller = LaneKeepingController(oval, shelley, speedProfile)
 
-
 #simulate
-mapMatchType = "closest"
-bikeSim = Simulation(oval, shelley, speedProfile, controller, mapMatchType)
-logFile = bikeSim.simulate()
+bikeSim1 = Simulation(oval, shelley, speedProfile, controller, "closest")
+logFile1 = bikeSim1.simulate()
 
 
 
 
-#check against MATLAB simulation results
-x = genfromtxt("unitTest.csv", delimiter =",")
 
-delta = x[:,0]
-deltaFFW = x[:,1]
-deltaFB = x[:,2]
-curvature = x[:,3]
-FxDes = x[:,4]
-UxDesired = x[:,5]
-t = x[:,6]
-alphaR = x[:,7]
-alphaF = x[:,8]
-s = x[:,9]
-Ux = x[:,10]
-Uy = x[:,11]
-r  = x[:,12]
-e  = x[:,13]
-deltaPsi = x[:,14]
-betaFFW = x[:,15]
-FyFdes = x[:,16]
-FyRdes = x[:,17]
-alphaFdes = x[:,18]
-alphaRdes = x[:,19]
-FxFFW = x[:,20]
-FxST = x[:,21]
-FxF  = x[:,22]
-FxR  = x[:,23]
-Fx = FxF + FxR
-FyF = x[:,24]
-FyR = x[:,25]
+# #check against MATLAB simulation results
+# x = genfromtxt("unitTest.csv", delimiter =",")
+
+# delta = x[:,0]
+# deltaFFW = x[:,1]
+# deltaFB = x[:,2]
+# curvature = x[:,3]
+# FxDes = x[:,4]
+# UxDesired = x[:,5]
+# t = x[:,6]
+# alphaR = x[:,7]
+# alphaF = x[:,8]
+# s = x[:,9]
+# Ux = x[:,10]
+# Uy = x[:,11]
+# r  = x[:,12]
+# e  = x[:,13]
+# deltaPsi = x[:,14]
+# betaFFW = x[:,15]
+# FyFdes = x[:,16]
+# FyRdes = x[:,17]
+# alphaFdes = x[:,18]
+# alphaRdes = x[:,19]
+# FxFFW = x[:,20]
+# FxST = x[:,21]
+# FxF  = x[:,22]
+# FxR  = x[:,23]
+# Fx = FxF + FxR
+# FyF = x[:,24]
+# FyR = x[:,25]
 
 
-plt.close("all")
-plt.figure()
-plt.plot(logFile['s'], logFile['e'])
-plt.plot(s, e)
-plt.xlabel('Distance Along Path (m)')
-plt.ylabel('Lateral Error (m)')
-plt.legend(['PySim', 'MATLAB'])
-plt.show()
 
 # # plt.figure()
 # # plt.plot(logFile['s'], logFile['UxDes'])

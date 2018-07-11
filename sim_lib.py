@@ -3,7 +3,7 @@ import tiremodel_lib as tm
 import vehicle_lib
 import path_lib
 from controllers import *
-import sys
+import time
 
 #Defines a simulation class and a state class
 
@@ -41,6 +41,8 @@ class Simulation:
 
 			#Calculate controller inputs
 			auxVars = self.controller.updateInput(localState, controlInput)
+			
+
 
 			#Update state
 			self.updateState(controlInput, localState, globalState, auxVars)
