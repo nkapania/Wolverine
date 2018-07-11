@@ -78,8 +78,8 @@ def _force2alpha(forceTable, alphaTable, Fdes):
 def _lanekeeping(sim,localState):
 	
 	#note - interp requires rank 0 arrays
-	sTable = sim.path.s[:,0]
-	kTable = sim.path.curvature[:,0]
+	sTable = sim.path.s
+	kTable = sim.path.curvature
 
 	K = np.interp(localState.s, sTable, kTable) #run interp every time - this is slow, but we may be able to get away with	
 	deltaFFW, betaFFW, FyFdes, FyRdes, alphaFdes, alphaRdes = _getDeltaFFW(sim, localState, K)
@@ -91,9 +91,9 @@ def _lanekeeping(sim,localState):
 def _speedTracking(sim, localState):
 
 	#note - interp requires rank 0 arrays
-	AxTable = sim.profile.Ax[:,0]
-	UxTable = sim.profile.Ux[:,0]
-	sTable = sim.profile.s[:,0]
+	AxTable = sim.profile.Ax
+	UxTable = sim.profile.Ux
+	sTable = sim.profile.s
 	m = sim.vehicle.m
 	fdrag = sim.vehicle.dragCoeff
 	frr = sim.vehicle.rollResistance

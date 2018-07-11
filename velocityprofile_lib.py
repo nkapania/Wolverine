@@ -34,13 +34,13 @@ def generateRacingProfile(vehicle, path):
 	numSteps = path.s.size
 	
 	#Pre-allocate three velocity profiles (steady state, braking, decel)
-	UxInit1 = np.zeros((numSteps,1))
-	UxInit2 = np.zeros((numSteps,1))
-	UxInit3 = np.zeros((numSteps,1))
+	UxInit1 = np.zeros(numSteps)
+	UxInit2 = np.zeros(numSteps)
+	UxInit3 = np.zeros(numSteps)
 
 	#Pre-allocate Ax and Ay
-	ax = np.zeros((numSteps,1))
-	ay = np.zeros((numSteps,1))
+	ax = np.zeros(numSteps)
+	ay = np.zeros(numSteps)
 
 	
 
