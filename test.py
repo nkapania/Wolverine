@@ -26,7 +26,8 @@ controller = LaneKeepingController(oval, shelley, speedProfile)
 
 
 #simulate
-bikeSim = Simulation(oval, shelley, speedProfile, controller)
+mapMatchType = "euler"
+bikeSim = Simulation(oval, shelley, speedProfile, controller, mapMatchType)
 logFile = bikeSim.simulate()
 
 

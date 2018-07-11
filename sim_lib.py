@@ -8,7 +8,7 @@ import sys
 #Defines a simulation class and a state class
 
 class Simulation:
-	def __init__(self, path, vehicle, profile, controller): 
+	def __init__(self, path, vehicle, profile, controller, mapMatchType = "euler"): 
 		self.path = path
 		self.vehicle = vehicle
 		self.profile = profile
@@ -17,7 +17,7 @@ class Simulation:
 		self.physics = "bicycle"
 		self.logger = Logger()
 		self.ts = 0.01 #simulation time in seconds
-		self.mapMatchType = "euler"
+		self.mapMatchType = mapMatchType
 		
 		
 	def simulate(self):
