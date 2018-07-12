@@ -149,7 +149,8 @@ class GlobalState:
 		self.psi  = psi
 
 class Logger:
-	def __init__(self, NUMBER_DATA_POINTS = 10000):
+	#Probably a better way to decide this
+	def __init__(self, NUMBER_DATA_POINTS = 100000):
 		self.data = {}
 		self.counter = 0
 		self.NUMBER_DATA_POINTS = NUMBER_DATA_POINTS

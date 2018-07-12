@@ -13,7 +13,7 @@ shelley = Vehicle()
 
 #Create path object
 oval = Path()
-oval.loadFromCSV("maps/simpleRace.csv") #initialize by loading already defined map
+oval.loadFromMAT("maps/THrace.mat")
 oval.setFriction(0.7)
 
 
@@ -25,8 +25,8 @@ speedProfile.generate(shelley, oval)
 controller = LaneKeepingController(oval, shelley, speedProfile)
 
 #simulate
-bikeSim1 = Simulation(oval, shelley, speedProfile, controller, "closest")
-logFile1 = bikeSim1.simulate()
+bikeSim = Simulation(oval, shelley, speedProfile, controller, "closest")
+logFile = bikeSim.simulate()
 
 
 
@@ -65,12 +65,14 @@ logFile1 = bikeSim1.simulate()
 
 
 
-# # plt.figure()
-# # plt.plot(logFile['s'], logFile['UxDes'])
-# # plt.plot(s, UxDesired)
-# # plt.xlabel('Time (s)')
-# # plt.ylabel('Distance Along Path (m)')
-# # plt.legend(['PySim', 'MATLAB'])
+plt.figure()
+plt.plot(logFile['s'], logFile['UxDes'])
+plt.plot(logFile['s'], logFile['Ux'])
+#plt.plot(s, UxDesired)
+plt.xlabel('Time (s)')
+plt.ylabel('Distance Along Path (m)')
+plt.legend(['PySim', 'MATLAB'])
+plt.show()
 
 # # plt.figure()
 # # plt.plot(logFile['s'], logFile['r'])

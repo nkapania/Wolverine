@@ -2,7 +2,8 @@
 
 import numpy as np
 from numpy import genfromtxt
-#from scipy.io import loadmat
+import scipy.io as sio
+
 
 class Path:
 	def __init__(self): 
@@ -17,7 +18,7 @@ class Path:
 		self.refPointName = "none" #name of reference point
 		self.friction = 1.0 #default value
 
-	#loads map from mat file
+	#loads map from csv file - CRUDE
 	def loadFromCSV(self, pathName):
 		x = genfromtxt(pathName, delimiter =",")
 		self.s = np.array(x[:,0])
@@ -27,6 +28,14 @@ class Path:
 		self.roadPsi = np.array(x[:,4])
 		self.roadIC = np.array(x[0:3,5])
 
+	def loadFromMAT(self, pathName):
+		path = sio.loadmat(pathName, squeeze_me = True)
+		self.s = path['world']['s'].sum()
+		self.curvature = path['world']['K'].sum()
+		self.posE = path['world']['roadE'].sum()
+		self.posN = path['world']['roadN'].sum()
+		self.roadPsi = path['world']['roadPsi'].sum()
+		self.roadIC = path['world']['road_IC'].sum()
 
 
 
