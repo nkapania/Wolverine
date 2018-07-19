@@ -8,397 +8,431 @@ import time
 #Defines a simulation class and a state class
 
 class Simulation:
-	def __init__(self, path, vehicle, profile, controller, mapMatchType = "euler"): 
-		self.path = path
-		self.vehicle = vehicle
-		self.profile = profile
-		self.controller = controller
-		self.isRunning = True
-		self.physics = "bicycle"
-		self.logger = Logger()
-		self.ts = 0.01 #simulation time in seconds
-		self.mapMatchType = mapMatchType
-		
-		
-	def simulate(self):
-		#initialize states and instantiate objects
-		Ux0 = self.profile.Ux[0] #start car at the correct velocity
-		localState = LocalState(Ux0)
-		globalState = GlobalState(self.path)
-		controlInput = ControlInput()
-		log = Logger()
-		mapMatch = MapMatch(self.path, self.mapMatchType)
+    def __init__(self, vehicle, controller, path = None, profile = None, mapMatchType = "euler", maxTime = None): 
+        self.path = path
+        self.vehicle = vehicle
+        self.profile = profile
+        self.controller = controller
+        self.isRunning = True
+        self.physics = "bicycle"
+        self.logger = Logger()
+        self.ts = 0.01 #simulation time in seconds
+        self.mapMatchType = mapMatchType
+        self.maxTime = maxTime
+        
+        
+    def simulate(self):
+        ##initialize states and instantiate objects
 
-		counter = 0
+        if self.profile is None:
+            Ux0 = 10.  #specify start state
+        else:
+            Ux0 = self.profile.Ux[0] #start car at the initial velocity specified in the path
 
-		while self.isRunning:
-
-			#Perform localization
-			mapMatch.localize(localState, globalState)
-
-			#Check to see if we should terminate
-			self.checkForTermination(localState, counter, log)
-
-			#Calculate controller inputs
-			auxVars = self.controller.updateInput(localState, controlInput)
-			
+        localState = LocalState(Ux0)
+        globalState = GlobalState(self.path)
+        controlInput = ControlInput()
+        log = Logger()
+        mapMatch = MapMatch(self.path, self.mapMatchType)
 
 
-			#Update state
-			self.updateState(controlInput, localState, globalState, auxVars)
+        ##Start the Counter
+        counter = 0
 
-			#Append counter and print to screen
-			counter = counter + 1
-			printStatus(localState, self.path, counter)
+        ##Run the simulation!
+        while self.isRunning:
+            
+            #Perform localization
+            mapMatch.localize(localState, globalState)
 
+            #Check to see if we should terminate
+            self.checkForTermination(localState, counter, log)
 
+            #Calculate controller inputs
+            auxVars = self.controller.updateInput(localState, controlInput)            
 
+            #Update state
+            self.updateState(controlInput, localState, globalState, auxVars)
 
-			#save signals needed
-			K, UxDes = auxVars	#unpack auxillary variables for debugging
-
-			log.append('t',counter*self.ts)
-			log.append('Ux',localState.Ux)
-			log.append('s', localState.s)
-			log.append('e', localState.e)
-			log.append('UxDes', UxDes) 
-			log.append('posE', globalState.posE)
-			log.append('posN', globalState.posN)
-			log.append('r', localState.r)
-			log.append('Uy', localState.Uy)
-			log.incrementCounter()
+            #Append counter and print to screen
+            counter = counter + 1
+            self.printStatus(localState, counter)
 
 
-
-		return log.getData()
-
-
-
-
-
-	def checkForTermination(self, localState, counter, log):
-
-		#Check if we have ended the simulation
-		if localState.s > (self.path.s[-1] - 0.55): #Stop simulation a little before end of path
-			self.isRunning = False
-			runTime = counter * self.ts
-			print("Simulation complete - total time %.2f sec" %runTime) 			
-
-		#Check if we have gone off the track	
-		if abs(localState.e) > 5.0:
-			print("Car has left the track - terminating...")
-			self.isRunning = False
-
-		#For debug
-		if counter is 1000:
-			self.isRunning = False
-			print("Simulation Terminating")
+            #save signals needed
+            UxDes = auxVars["UxDes"]                
+            log.append('t',counter*self.ts)
+            log.append('Ux',localState.Ux)
+            log.append('s', localState.s)
+            log.append('e', localState.e)
+            log.append('UxDes', UxDes) 
+            log.append('posE', globalState.posE)
+            log.append('posN', globalState.posN)
+            log.append('r', localState.r)
+            log.append('Uy', localState.Uy)
+            log.append('deltaCmd', controlInput.delta)
+            log.append('FxCmd', controlInput.Fx)
+            log.incrementCounter()
 
 
-	def updateState(self, controlInput, localState, globalState, auxVars):
-		(K, UxDes) = auxVars #unpack auxvars
-		if self.physics is "bicycle":
-			localState, globalState = bicycleModel(self.vehicle, controlInput, localState, globalState, self.mapMatchType, self.ts, K)
-			return localState, globalState
+
+        return log.getData()
+
+
+
+
+
+    def checkForTermination(self, localState, counter, log):
+
+        #Check if we have ended the simulation. If running open loop, stop after maximum time is specified. Otherwise stop once we reach the end of the track or if we go unstable
+
+        
+        if self.path is None:  
+            assert (self.maxTime != None), "Must specify time to run"
+            t = counter * self.ts
+            if t > self.maxTime:
+                self.isRunning = False
+
+        else:
+            if localState.s > (self.path.s[-1] - 0.55): #Stop simulation a little before end of path
+                self.isRunning = False
+                runTime = counter * self.ts
+                print("Simulation complete - total time %.2f sec" %runTime)             
+
+            #Check if we have gone off the track    
+            if abs(localState.e) > 5.0:
+                print("Car has left the track - terminating...")
+                self.isRunning = False
+
+    def printStatus(self, localState, counter):
+        if self.path is None:
+            t = counter * self.ts 
+            pctComplete = np.ceil( 100 * t / self.maxTime)
+        else:
+            pctComplete = np.ceil( 100 * localState.s / self.path.s[-1] )
+
+        if np.mod(counter, 100) == 0:
+            print("Simulation is %02d percent done" % pctComplete)
+            #print(pctComplete)
+            #print("Distance Along Path is %04d meters") % localState.s
+
+
+    def updateState(self, controlInput, localState, globalState, auxVars):
+        K = auxVars["K"]
+        UxDes = auxVars["UxDes"]
+        if self.physics is "bicycle":
+            localState, globalState = bicycleModel(self.vehicle, controlInput, localState, globalState, self.mapMatchType, self.ts, K)
+            return localState, globalState
 
 class LocalState:
-	def __init__(self, Ux=0.0, Uy=0.0, r=0.0, e=0.0, deltaPsi=0.0, s=0.0, K = 0.0):
-		self.Ux = Ux
-		self.Uy = Uy
-		self.r = r
-		self.e = e
-		self.deltaPsi = deltaPsi
-		self.s = s
+    def __init__(self, Ux=0.0, Uy=0.0, r=0.0, e=0.0, deltaPsi=0.0, s=0.0, K = 0.0):
+        self.Ux = Ux
+        self.Uy = Uy
+        self.r = r
+        self.e = e
+        self.deltaPsi = deltaPsi
+        self.s = s
 
-	def update(self, Ux, Uy, r, e, deltaPsi, s):
-		self.Ux = Ux
-		self.Uy = Uy
-		self.r  = r
-		self.e  = e
-		self.deltaPsi = deltaPsi
-		self.s = s
+    def update(self, Ux, Uy, r, e, deltaPsi, s):
+        self.Ux = Ux
+        self.Uy = Uy
+        self.r  = r
+        self.e  = e
+        self.deltaPsi = deltaPsi
+        self.s = s
 
-	def updateMapMatchStates(self, e, dPsi, s):
-		self.e = e
-		self.deltaPsi = dPsi
-		self.s = s
+    def updateMapMatchStates(self, e, dPsi, s):
+        self.e = e
+        self.deltaPsi = dPsi
+        self.s = s
 
-	def updateVelocityState(self, Ux, Uy, r):
-		self.Ux = Ux
-		self.Uy = Uy
-		self.r  = r
+    def updateVelocityState(self, Ux, Uy, r):
+        self.Ux = Ux
+        self.Uy = Uy
+        self.r  = r
 
-	def printState(self):
-		print("Ux is %.2f" %self.Ux) 
-		print("Uy is %.2f" %self.Uy)
-		print("r is %.2f" %self.r)
-		print("e is %.2f" %self.e)
-		print("deltaPsi is %.2f" %self.deltaPsi)
-		print("s is %.2f" %self.s)
+    def printState(self):
+        print("Ux is %.2f" %self.Ux) 
+        print("Uy is %.2f" %self.Uy)
+        print("r is %.2f" %self.r)
+        print("e is %.2f" %self.e)
+        print("deltaPsi is %.2f" %self.deltaPsi)
+        print("s is %.2f" %self.s)
 
-		
+        
 class GlobalState:
-	def __init__(self, path):
-		self.posE = path.posE[1] #start at second element of array to avoid mapMatch issues
-		self.posN = path.posN[1]
-		self.psi  = path.roadPsi[1]
+    def __init__(self, path):
 
-	def update(self, posE, posN, psi):
-		self.posE = posE
-		self.posN = posN
-		self.psi  = psi
+        #Start at 0 IC's if path is None
+        if path is None: 
+            self.posE = 0
+            self.posN = 0
+            self.psi = 0
+
+        else:
+            self.posE = path.posE[1] #start at second element of array to avoid mapMatch issues
+            self.posN = path.posN[1]
+            self.psi  = path.roadPsi[1]
+
+    def update(self, posE, posN, psi):
+        self.posE = posE
+        self.posN = posN
+        self.psi  = psi
 
 class Logger:
-	#Probably a better way to decide this
-	def __init__(self, NUMBER_DATA_POINTS = 100000):
-		self.data = {}
-		self.counter = 0
-		self.NUMBER_DATA_POINTS = NUMBER_DATA_POINTS
+    #Probably a better way to decide this
+    def __init__(self, NUMBER_DATA_POINTS = 100000):
+        self.data = {}
+        self.counter = 0
+        self.NUMBER_DATA_POINTS = NUMBER_DATA_POINTS
 
-	def append(self, signalName, signalData):
-		if signalName in self.data.keys():
-			self.data[signalName][self.counter] = signalData
+    def append(self, signalName, signalData):
+        if signalName in self.data.keys():
+            self.data[signalName][self.counter] = signalData
 
-		else:
-			#create array once
-			self.data[signalName] = np.zeros( (self.NUMBER_DATA_POINTS, 1) )
+        else:
+            #create array once and append
+            self.data[signalName] = np.zeros( (self.NUMBER_DATA_POINTS, 1) )
+            self.data[signalName][0] = signalData
 
-	def incrementCounter(self):
-		self.counter = self.counter + 1
+    def incrementCounter(self):
+        self.counter = self.counter + 1
 
 
-	def getData(self):
-		#remove trailing zeros
-		for key in self.data.keys():
-			object = self.data[key]
-			self.data[key] = np.trim_zeros(object, 'b')
+    def getData(self):
+        #remove trailing zeros
+        for key in self.data.keys():
+            object = self.data[key]
+            self.data[key] = np.trim_zeros(object, 'b')
 
-		#return the dictionary
-		return self.data
+        #return the dictionary
+        return self.data
 
 
 class MapMatch:
-	def __init__(self, path, matchType):
-		self.path = path
-		self.seed = 1 #index of map to take a guess
-		self.firstSearch = True #first time running search
-		self.matchType = matchType
+    def __init__(self, path, matchType):
+        self.path = path
+        self.seed = 1 #index of map to take a guess
+        self.firstSearch = True #first time running search
+        self.matchType = matchType
 
 
 
-	def localize(self, localState, globalState):
-		if self.matchType is "euler":
-			return
+    def localize(self, localState, globalState):
+        if self.matchType is "euler":
+            return
 
-		elif self.matchType is "closest":
-			e, s, dPsi = self.mapMatch(globalState.posE, globalState.posN, globalState.psi)
-			localState.updateMapMatchStates(e, dPsi, s)
-			return
+        elif self.matchType is "closest":
+            e, s, dPsi = self.mapMatch(globalState.posE, globalState.posN, globalState.psi)
+            localState.updateMapMatchStates(e, dPsi, s)
+            return
 
-		else:
-			sys.exit("invalid mapMatch Type")
+        else:
+            sys.exit("invalid mapMatch Type")
 
-	def mapMatch(self, posE, posN, psi):
-		pEN = [posE, posN]
-		pSE = self.convertToLocalPath(pEN)
+    def mapMatch(self, posE, posN, psi):
+        pEN = [posE, posN]
+        pSE = self.convertToLocalPath(pEN)
 
-		#avoid small bug where we go to negative at start of path
-		if pSE[0] < 0:
-			s = 0
-		else:
-			s = pSE[0]
+        #avoid small bug where we go to negative at start of path
+        if pSE[0] < 0:
+            s = 0
+        else:
+            s = pSE[0]
 
-		e = pSE[1]
-		psiDes = np.interp(s, np.squeeze(self.path.s), np.squeeze(self.path.roadPsi))
-		dPsi = psi - psiDes
+        e = pSE[1]
+        psiDes = np.interp(s, np.squeeze(self.path.s), np.squeeze(self.path.roadPsi))
+        dPsi = psi - psiDes
 
-		return e, s, dPsi
+        return e, s, dPsi
 
-	def convertToLocalPath(self, pEN):
-		#reshape to rank 0 arrays
-		posE = np.squeeze(self.path.posE)
-		posN = np.squeeze(self.path.posN)
-		roadPsi = np.squeeze(self.path.roadPsi)
-		s = np.squeeze(self.path.s)
-
-
-		m = posE.size  #number of points in the map
-
-		if self.firstSearch is True:
-			dist = np.zeros([m, 1]) #array of distances
-
-			#go through all points in the map
-			for i in range(m):
-				pMap = [ posE[i], posN[i] ]
-				dist[i] = np.linalg.norm(np.array(pEN) - np.array(pMap))
+    def convertToLocalPath(self, pEN):
+        #reshape to rank 0 arrays
+        posE = np.squeeze(self.path.posE)
+        posN = np.squeeze(self.path.posN)
+        roadPsi = np.squeeze(self.path.roadPsi)
+        s = np.squeeze(self.path.s)
 
 
-			# Get closest point and the corresponding distance
-			absE = min(dist)
-			idx = np.argmin(dist)
+        m = posE.size  #number of points in the map
 
-			#Use cross product to get the signed error
-			#To determine sign of e, cross heading vector with vector from point to road
-	        #Append vectors with 0 to get 3 dims for convenient use of cross function
-	        	
-	        #some weird stuff here to get both in same format for cross product	
-			headingVector  = [-np.sin(roadPsi[idx]) , np.cos(roadPsi[idx]) , 0]
-			pENaugmented = np.array([pEN[0], pEN[1], 0])	
-			pathVector = [posE[idx], posN[idx] , 0]
+        if self.firstSearch is True:
+            dist = np.zeros([m, 1]) #array of distances
 
-			positionVector = pENaugmented -  pathVector
-			crss = np.cross(headingVector, positionVector)
+            #go through all points in the map
+            for i in range(m):
+                pMap = [ posE[i], posN[i] ]
+                dist[i] = np.linalg.norm(np.array(pEN) - np.array(pMap))
 
-			pSE = np.zeros(2)
-			pSE[0] = s[idx]	
-			pSE[1] = np.sign(crss[2]) * absE
 
-			self.firstSearch = False #next search use the seed
-			self.seed = idx
-			return pSE
+            # Get closest point and the corresponding distance
+            absE = min(dist)
+            idx = np.argmin(dist)
 
-		if self.firstSearch is False:
-			#Go forward
+            #Use cross product to get the signed error
+            #To determine sign of e, cross heading vector with vector from point to road
+            #Append vectors with 0 to get 3 dims for convenient use of cross function
+                
+            #some weird stuff here to get both in same format for cross product    
+            headingVector  = [-np.sin(roadPsi[idx]) , np.cos(roadPsi[idx]) , 0]
+            pENaugmented = np.array([pEN[0], pEN[1], 0])    
+            pathVector = [posE[idx], posN[idx] , 0]
 
-			lastPair = 9999999.0 #Inf
-			forwardInd = self.seed
+            positionVector = pENaugmented -  pathVector
+            crss = np.cross(headingVector, positionVector)
 
-			stillDecreasing = True
+            pSE = np.zeros(2)
+            pSE[0] = s[idx]    
+            pSE[1] = np.sign(crss[2]) * absE
 
-			while stillDecreasing:
+            self.firstSearch = False #next search use the seed
+            self.seed = idx
+            return pSE
 
-				if forwardInd + 1 <= m-2:
-					pMap1 = [ posE[forwardInd], posN[forwardInd] ]
-					pMap2 = [ posE[forwardInd+1], posN[forwardInd+1] ]
+        if self.firstSearch is False:
+            #Go forward
 
-					currentPair = np.linalg.norm( np.array(pEN) - np.array(pMap1) ) + np.linalg.norm( np.array(pEN) - np.array(pMap2)) 
-				else:
-					currentPair = 999999.0 #Inf
+            lastPair = 9999999.0 #Inf
+            forwardInd = self.seed
 
-				stillDecreasing = currentPair < lastPair
-				if stillDecreasing:
-					lastPair = currentPair
-					forwardInd = forwardInd + 1
+            stillDecreasing = True
 
-			smallestForward = lastPair
+            while stillDecreasing:
 
-			#Go back
-			lastPair = 9999999.0 #inf
-			backwardInd = self.seed
-			stillDecreasing = True
+                if forwardInd + 1 <= m-2:
+                    pMap1 = [ posE[forwardInd], posN[forwardInd] ]
+                    pMap2 = [ posE[forwardInd+1], posN[forwardInd+1] ]
 
-			while stillDecreasing:
-				if (backwardInd - 1) >= 1:
-					pMap1 = [ posE[backwardInd], posN[backwardInd] ]
-					pMap2 = [ posE[backwardInd -1], posN[backwardInd -1] ]
+                    currentPair = np.linalg.norm( np.array(pEN) - np.array(pMap1) ) + np.linalg.norm( np.array(pEN) - np.array(pMap2)) 
+                else:
+                    currentPair = 999999.0 #Inf
 
-					currentPair = np.linalg.norm(np.array(pEN) - np.array(pMap1)) + np.linalg.norm(np.array(pEN) - np.array(pMap2))
+                stillDecreasing = currentPair < lastPair
+                if stillDecreasing:
+                    lastPair = currentPair
+                    forwardInd = forwardInd + 1
 
-				else:
-					currentPair = 999999.0 #Inf
+            smallestForward = lastPair
 
-				stillDecreasing = currentPair < lastPair
-				if stillDecreasing:
-					lastPair = currentPair
-					backwardInd = backwardInd - 1
+            #Go back
+            lastPair = 9999999.0 #inf
+            backwardInd = self.seed
+            stillDecreasing = True
 
-			smallestBackward = lastPair
+            while stillDecreasing:
+                if (backwardInd - 1) >= 1:
+                    pMap1 = [ posE[backwardInd], posN[backwardInd] ]
+                    pMap2 = [ posE[backwardInd -1], posN[backwardInd -1] ]
 
-			if smallestBackward < smallestForward:
-				lowSind = backwardInd - 1
-				highSind = backwardInd
+                    currentPair = np.linalg.norm(np.array(pEN) - np.array(pMap1)) + np.linalg.norm(np.array(pEN) - np.array(pMap2))
 
-			else:
-				lowSind = forwardInd
-				highSind = forwardInd + 1
+                else:
+                    currentPair = 999999.0 #Inf
 
-			#do not understand this math - need to think about further
+                stillDecreasing = currentPair < lastPair
+                if stillDecreasing:
+                    lastPair = currentPair
+                    backwardInd = backwardInd - 1
 
-			a = np.linalg.norm( np.array(pEN) - np.array([posE[lowSind] , posN[lowSind]]) )
-			b = np.linalg.norm( np.array(pEN) - np.array([posE[highSind], posN[highSind]]))
-			c = np.linalg.norm( np.array([posE[lowSind], posN[lowSind] ])- np.array([posE[highSind], posN[highSind]]) );
+            smallestBackward = lastPair
+
+            if smallestBackward < smallestForward:
+                lowSind = backwardInd - 1
+                highSind = backwardInd
+
+            else:
+                lowSind = forwardInd
+                highSind = forwardInd + 1
+
+            #do not understand this math - need to think about further
+
+            a = np.linalg.norm( np.array(pEN) - np.array([posE[lowSind] , posN[lowSind]]) )
+            b = np.linalg.norm( np.array(pEN) - np.array([posE[highSind], posN[highSind]]))
+            c = np.linalg.norm( np.array([posE[lowSind], posN[lowSind] ])- np.array([posE[highSind], posN[highSind]]) );
          
-			deltaS = (a**2+c**2-b**2)/(2*c)
-			absE = np.sqrt(np.abs(a**2-deltaS**2))
-		
+            deltaS = (a**2+c**2-b**2)/(2*c)
+            absE = np.sqrt(np.abs(a**2-deltaS**2))
+        
 
-			headingVector = [ -np.sin(roadPsi[lowSind]), np.cos(roadPsi[lowSind]), 0]
-			pENaugmented = np.array([pEN[0], pEN[1], 0])
-			pathVector = np.array([posE[lowSind], posN[lowSind], 0])
+            headingVector = [ -np.sin(roadPsi[lowSind]), np.cos(roadPsi[lowSind]), 0]
+            pENaugmented = np.array([pEN[0], pEN[1], 0])
+            pathVector = np.array([posE[lowSind], posN[lowSind], 0])
 
-			positionVector = pENaugmented - pathVector
-			crss = np.cross(headingVector, positionVector)
-        	
-			pSE = np.zeros(2)
-			pSE[0] = s[lowSind] + deltaS
-			pSE[1] = np.sign(crss[2]) * absE
+            positionVector = pENaugmented - pathVector
+            crss = np.cross(headingVector, positionVector)
+            
+            pSE = np.zeros(2)
+            pSE[0] = s[lowSind] + deltaS
+            pSE[1] = np.sign(crss[2]) * absE
 
-			self.seed = lowSind
+            self.seed = lowSind
 
-			return pSE
+            return pSE
 
 def  bicycleModel(vehicle, controlInput, localState, globalState, matchType, ts, K):
-	#Implementation of bicycle model with force derating, but no longitudinal dynamics
+    #Implementation of bicycle model with force derating, but no longitudinal dynamics
 
-	#Unpack variables for brevity
-	FxDes = controlInput.Fx
-	delta = controlInput.delta
+    #Unpack variables for brevity
+    FxDes = controlInput.Fx
+    delta = controlInput.delta
+    
 
-	Ux = localState.Ux	
-	r = localState.r
-	Uy = localState.Uy
-	e = localState.e
-	deltaPsi = localState.deltaPsi
-	s = localState.s
 
-	psi = globalState.psi
-	posN = globalState.posN
-	posE = globalState.posE
+    Ux = localState.Ux    
+    r = localState.r
+    Uy = localState.Uy
+    e = localState.e
+    deltaPsi = localState.deltaPsi
+    s = localState.s
 
-	m = vehicle.m
-	a = vehicle.a
-	b = vehicle.b
-	Iz = vehicle.Iz
+    psi = globalState.psi
+    posN = globalState.posN
+    posE = globalState.posE
+
+    m = vehicle.m
+    a = vehicle.a
+    b = vehicle.b
+    Iz = vehicle.Iz
 
     #calculate forces and tire slips
-	FxF, FxR = getFx(FxDes, Ux, vehicle)
-	alphaF, alphaR = getSlips(localState, vehicle, controlInput)
-	FyF, FyR = tm.coupledTireForces(alphaF, alphaR,  FxF, FxR, vehicle)
-
+    FxF, FxR = getFx(FxDes, Ux, vehicle)
+    alphaF, alphaR = getSlips(localState, vehicle, controlInput)
+    FyF, FyR, zetaF, zetaR = tm.coupledTireForces(alphaF, alphaR,  FxF, FxR, vehicle)
     
-	#Calculate state derivatives and update
-	dUy = (FyF + FyR) / m - r*Ux
-	dr  = (a*FyF - b*FyR) / Iz
-	dUx = Uy * r + (FxF + FxR - FyF * delta) / m
+    
+    #Calculate state derivatives and update
+    dUy = (FyF + FyR) / m - r*Ux
+    dr  = (a*FyF - b*FyR) / Iz
+    dUx = Uy * r + (FxF + FxR - FyF * delta) / m
 
-	if matchType is "euler":
-		de = Uy * np.cos(deltaPsi) + Ux * np.sin(deltaPsi)
-		ds = Ux * np.cos(deltaPsi) - Uy * np.sin(deltaPsi)
-		dDeltaPsi = r - K  * Ux
+    if matchType is "euler":
+        de = Uy * np.cos(deltaPsi) + Ux * np.sin(deltaPsi)
+        ds = Ux * np.cos(deltaPsi) - Uy * np.sin(deltaPsi)
+        dDeltaPsi = r - K  * Ux
 
-	dE = - Uy * np.cos(psi) - Ux * np.sin(psi)
-	dN =   Ux * np.cos(psi) - Uy * np.sin(psi)
-	dotPsi = r 
+    dE = - Uy * np.cos(psi) - Ux * np.sin(psi)
+    dN =   Ux * np.cos(psi) - Uy * np.sin(psi)
+    dotPsi = r 
 
     #update states with Euler integration
-	Uy = Uy + ts * dUy
-	r  = r + ts * dr
-	Ux = Ux + ts * dUx
-	posE = posE + ts*dE
-	posN = posN + ts*dN
-	psi = psi + ts*dotPsi
+    Uy = Uy + ts * dUy
+    r  = r + ts * dr
+    Ux = Ux + ts * dUx
+    posE = posE + ts*dE
+    posN = posN + ts*dN
+    psi = psi + ts*dotPsi
 
 
-	#For Euler integration, update states with ODEs 
-	if matchType is "euler":
-		e = e + ts*de 
-		s = s + ts*ds
-		deltaPsi = deltaPsi + ts * dDeltaPsi
+    #For Euler integration, update states with ODEs 
+    if matchType is "euler":
+        e = e + ts*de 
+        s = s + ts*ds
+        deltaPsi = deltaPsi + ts * dDeltaPsi
 
-	localState.update(Ux, Uy, r, e, deltaPsi, s)
-	globalState.update(posE, posN, psi)
+    localState.update(Ux, Uy, r, e, deltaPsi, s)
+    globalState.update(posE, posN, psi)
         
-	return localState, globalState  
+    return localState, globalState  
       
 
 
@@ -412,42 +446,35 @@ def  bicycleModel(vehicle, controlInput, localState, globalState, matchType, ts,
 
 
 def getSlips(localState, veh, controlInput):
-	Ux = localState.Ux
-	Uy = localState.Uy
-	r  = localState.r
-	delta = controlInput.delta
-	
-	if Ux < 2.0:
-		alphaF = 0 #speed too low to get slip estimate
-		alphaR = 0
+    Ux = localState.Ux
+    Uy = localState.Uy
+    r  = localState.r
+    delta = controlInput.delta
+    
+    if Ux < 2.0:
+        alphaF = 0 #speed too low to get slip estimate
+        alphaR = 0
 
-	else:
-		alphaF = np.arctan( (Uy + veh.a * r) / Ux ) - delta
-		alphaR = np.arctan( (Uy - veh.b * r) / Ux ) 
+    else:
+        alphaF = np.arctan( (Uy + veh.a * r) / Ux ) - delta
+        alphaR = np.arctan( (Uy - veh.b * r) / Ux ) 
 
-	return alphaF, alphaR
+    return alphaF, alphaR
 
 
 def getFx(FxDes, Ux, vehicle):
 
-	#Implement engine and brake limits
-	if FxDes > 0:
-		if Ux == 0:
-			Fx = FxDes #set to FxDes to avoid divide by zero
-		else:
-			Fx = min( vehicle.powerLimit / Ux - 0.7 * Ux ** 2 - 300, FxDes)
-	else:
-		Fx = FxDes
+    #Implement engine and brake limits
+    if FxDes > 0:
+        if Ux == 0:
+            Fx = FxDes #set to FxDes to avoid divide by zero
+        else:
+            Fx = min( vehicle.powerLimit / Ux - 0.7 * Ux ** 2 - 300, FxDes)
+    else:
+        Fx = FxDes
 
-	#Distribute according to weight
-	FxF = Fx * vehicle.b / vehicle.L
-	FxR = Fx * vehicle.a / vehicle.L
-	return FxF, FxR
+    #Distribute according to weight
+    FxF = Fx * vehicle.b / vehicle.L
+    FxR = Fx * vehicle.a / vehicle.L
+    return FxF, FxR
 
-
-def printStatus(localState, path, counter):
-	pctComplete = np.ceil( 100 * localState.s / path.s[-1] )
-	if np.mod(counter, 100) == 0:
-		print("Simulation is %02d percent done" % pctComplete)
-		#print(pctComplete)
-		#print("Distance Along Path is %04d meters") % localState.s

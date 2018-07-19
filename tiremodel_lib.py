@@ -33,7 +33,7 @@ def coupledTireForces(alphaF, alphaR,  FxF, FxR, vehicle):
 	FyF, zetaF = _coupledTire(alphaF, FxF, FzF, muF, muF, Cf)
 	FyR, zetaR = _coupledTire(alphaR, FxR, FzR, muR, muR, Cr)
 
-	return FyF, FyR
+	return FyF, FyR, zetaF, zetaR
 
 
 #helper function, don't need to call
