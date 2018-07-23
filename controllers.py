@@ -50,40 +50,20 @@ class LaneKeepingController():
 
 
 class OpenLoopControl():
-    def __init__(self, vehicle, inputType = "uniformRandom"):
-        self.inputType = inputType
-        if self.inputType is "uniformRandom":
-            self.minF = -19000. #Newtons
-            self.maxF = 9000. #Newtons
-            self.minDelta = -vehicle.deltaLim
-            self.maxDelta =  vehicle.deltaLim
-            
-        if inputType is "constantInput":
-            self.delta = 2 * np.pi / 180
-            self.Fx = 0.0
+    def __init__(self, vehicle, delta = 2 * np.pi / 180, Fx = 100.):
+        self.delta = delta
+        self.Fx = Fx
             
 
     #Note, Local state not needed for open loop control, no feedback!    
     def updateInput(self, localState, controlInput):
         
-        if self.inputType is "uniformRandom":
-            Fx = np.random.uniform(low = self.minF , high = self.maxF)
-            delta = np.random.uniform(low = self.minDelta , high = self.maxDelta)
+        delta = self.delta
+        Fx = self.Fx
             
-        elif self.inputType is "constantInput":
-            delta = self.delta
-            Fx = self.Fx
-            
-        else:
-            delta = 0.
-            Fx = 0.1
-
         #Curvature is 0 for open loop control - no path to track 
         auxVars = {'K': 0., 'UxDes': 0.}
         controlInput.update(delta, Fx)
-        
-        
-
 
         return auxVars
 

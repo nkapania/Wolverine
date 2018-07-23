@@ -1,3 +1,4 @@
+import matplotlib as plt
 import numpy as np
 import tiremodel_lib as tm
 import vehicle_lib
@@ -60,6 +61,7 @@ class Simulation:
 
 
             #save signals needed
+
             UxDes = auxVars["UxDes"]                
             log.append('t',counter*self.ts)
             log.append('Ux',localState.Ux)
@@ -125,7 +127,7 @@ class Simulation:
             return localState, globalState
 
 class LocalState:
-    def __init__(self, Ux=0.0, Uy=0.0, r=0.0, e=0.0, deltaPsi=0.0, s=0.0, K = 0.0):
+    def __init__(self, Ux=0.0, Uy=0.0, r=0.0, e=0.0, deltaPsi=0.0, s=0.0):
         self.Ux = Ux
         self.Uy = Uy
         self.r = r
@@ -203,7 +205,10 @@ class Logger:
         #remove trailing zeros
         for key in self.data.keys():
             object = self.data[key]
-            self.data[key] = np.trim_zeros(object, 'b')
+            self.data[key] = self.data[key][0:self.counter-1, :]
+
+        #Add additional info
+        self.data["N"] = self.counter
 
         #return the dictionary
         return self.data
@@ -368,6 +373,28 @@ class MapMatch:
             self.seed = lowSind
 
             return pSE
+
+class Animation:
+    def __init__(self, path, logFile):
+    	self.path = path
+    	self.logFile = logFile
+
+    def animate(self, numFrames = 10):
+    	return
+    	#STOPPED HERE
+    	# N = self.logFile["N"]
+
+    	# for i in range(N):
+
+    	# 	#Don't plot every frame
+    	# 	if i%numFrames is 0:
+    	# 		self.plotVehicle()
+
+
+
+
+
+
 
 def  bicycleModel(vehicle, controlInput, localState, globalState, matchType, ts, K):
     #Implementation of bicycle model with force derating, but no longitudinal dynamics
