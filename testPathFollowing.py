@@ -7,6 +7,7 @@ from sim_lib import *
 from controllers import *
 from numpy import genfromtxt
 import time
+import pdb
 
 
 #Create vehicle object
@@ -15,7 +16,7 @@ shelley = Vehicle()
 #Create path object
 oval = Path()
 oval.loadFromMAT("maps/rightTurnRFSdownshifted.mat")
-oval.setFriction(0.5)
+oval.setFriction(0.3)
 
 
 #Create speed profile
@@ -28,8 +29,6 @@ controller = LaneKeepingController(oval, shelley, speedProfile)
 #simulate
 bikeSim = Simulation(shelley, controller, path = oval, profile = speedProfile, mapMatchType = "closest") 
 logFile = bikeSim.simulate()
-
-
 
 
 
