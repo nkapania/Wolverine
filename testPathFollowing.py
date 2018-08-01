@@ -1,10 +1,10 @@
 import matplotlib.pyplot as plt
-from vehicle_lib import *
-from tiremodel_lib import *
-from velocityprofile_lib import * 
-from path_lib import *
-from sim_lib import *
-from controllers import *
+from utils.vehicle_lib import *
+from utils.tiremodel_lib import *
+from utils.velocityprofile_lib import * 
+from utils.path_lib import *
+from utils.sim_lib import *
+from utils.controllers import *
 from numpy import genfromtxt
 import time
 import pdb
