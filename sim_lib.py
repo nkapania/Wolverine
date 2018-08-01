@@ -134,7 +134,7 @@ class LocalState:
         self.deltaPsi = deltaPsi
         self.s = s
 
-    def update(self, Ux, Uy, r, e, deltaPsi, s):
+    def update(self, Ux = 0, Uy = 0, r = 0, e = 0, deltaPsi = 0, s = 0):
         self.Ux = Ux
         self.Uy = Uy
         self.r  = r
@@ -175,7 +175,7 @@ class GlobalState:
             self.posN = path.posN[1]
             self.psi  = path.roadPsi[1]
 
-    def update(self, posE, posN, psi):
+    def update(self, posE = 0, posN = 0, psi = 0):
         self.posE = posE
         self.posN = posN
         self.psi  = psi
