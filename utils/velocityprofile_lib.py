@@ -11,23 +11,19 @@ class VelocityProfile:
 		self.Ax = np.array([[0]])
 
 
-	def generate(self, vehicle, path):
+	def generate(self, vehicle, path, friction = 0.3, vMax = 10):
 		if self.type is "racing":
-			self.s, self.Ax, self.Ux = generateRacingProfile(vehicle, path)
+			self.s, self.Ax, self.Ux = generateRacingProfile(vehicle, path, friction, vMax)
 
 		else:
 			print("Error")
 
-		
 
-
-
-def generateRacingProfile(vehicle, path):
+def generateRacingProfile(vehicle, path, friction, vMax):
 	#Extract Peformance Limits and parameters
 	g = vehicle.g
-	vMax = vehicle.maxSpeed
-	AxMax = path.friction * g
-	AyMax = path.friction * g
+	AxMax = friction * g
+	AyMax = friction * g
 	K = path.curvature
 	s = path.s
 
@@ -41,8 +37,6 @@ def generateRacingProfile(vehicle, path):
 	#Pre-allocate Ax and Ay
 	ax = np.zeros(numSteps)
 	ay = np.zeros(numSteps)
-
-	
 
 
 	#Desired velocity should meet lateral acceleration requirement

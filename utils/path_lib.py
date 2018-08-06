@@ -16,7 +16,6 @@ class Path:
 		self.type = "open" #does not form a loop
 		self.referencePoint =np.zeros((3,1)) #GPS reference point
 		self.refPointName = "none" #name of reference point
-		self.friction = 1.0 #default value
 
 	#loads map from csv file - CRUDE
 	def loadFromCSV(self, pathName):
@@ -30,7 +29,7 @@ class Path:
 
 	def loadFromMAT(self, pathName):
 		path = sio.loadmat(pathName, squeeze_me = True)
-		self.s = path['world']['s'].sum()
+		self.s = path['world']['s'].sum() #No idea why you need the .sum, but otherwise doesn't work
 		self.curvature = path['world']['K'].sum()
 		self.posE = path['world']['roadE'].sum()
 		self.posN = path['world']['roadN'].sum()
@@ -38,11 +37,6 @@ class Path:
 		self.roadIC = path['world']['road_IC'].sum()
 
 
-
-
-	def setFriction(self, value):
-		self.friction = value
-		
 
 
 

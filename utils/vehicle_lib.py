@@ -24,7 +24,6 @@ class Vehicle:
 			self.h = 0.75   #Distance from the ground
 			self.brakeTimeDelay = 0.25 #Seconds
 			self.rollResistance = 255.0 #Newtons
-			self.maxSpeed = 10
 			self.powerLimit = 160000.0 #Watts
 			self.dragCoeff = 0.3638 #N / (m/s)^2
 			self.deltaLim = 27. * np.pi / 180  #Steering limit, radians
@@ -48,7 +47,6 @@ class Vehicle:
 			self.h = 0.75   #Distance from the ground
 			self.brakeTimeDelay = 0.25 #Seconds
 			self.rollResistance = 255.0 #Newtons
-			self.maxSpeed = 10
 			self.powerLimit = 160000.0 #Watts
 			self.dragCoeff = 0.3638 #N / (m/s)^2
 			self.deltaLim = 27. * np.pi / 180  #Steering limit, radians

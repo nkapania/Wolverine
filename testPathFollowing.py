@@ -15,13 +15,11 @@ shelley = Vehicle()
 
 #Create path object
 oval = Path()
-oval.loadFromMAT("maps/rightTurnRFSdownshifted.mat")
-oval.setFriction(0.3)
-
+oval.loadFromMAT("maps/cpgOpen.mat")
 
 #Create speed profile
 speedProfile = VelocityProfile("racing")
-speedProfile.generate(shelley, oval)
+speedProfile.generate(shelley, oval, friction = 0.7, vMax = 50)
 
 # #Create controller object - use lanekeeping
 controller = LaneKeepingController(oval, shelley, speedProfile)
@@ -31,23 +29,23 @@ bikeSim = Simulation(shelley, controller, path = oval, profile = speedProfile, m
 logFile = bikeSim.simulate()
 
 
-
-plt.figure()
-plt.plot(logFile['s'], logFile['UxDes'])
-plt.plot(logFile['s'], logFile['Ux'])
-#plt.plot(s, UxDesired)
-plt.xlabel('s (meters)')
-plt.ylabel('Desired Velocity (m)')
-plt.legend(['Desired', 'Actual'])
-
+plt.close('all')
 
 plt.figure()
 plt.plot(logFile['s'], logFile['e'])
-#plt.plot(s, UxDesired)
 plt.xlabel('s (meters)')
 plt.ylabel('e (meters)')
-#plt.legend(['PySim', 'MATLAB'])
+
+
+plt.figure()
+plt.plot(logFile['s'], logFile['deltaPsi']*180 / np.pi)
+plt.xlabel('s (meters)')
+plt.ylabel('dPsi (deg)')
+
+plt.figure()
+plt.plot(logFile['s'], logFile['Ux'])
+plt.plot(logFile['s'], logFile['UxDes'])
+plt.xlabel('s (meters)')
+plt.ylabel('Ux (m/s)')
+plt.legend(['Actual', 'Desired'])
 plt.show()
-
-
-
