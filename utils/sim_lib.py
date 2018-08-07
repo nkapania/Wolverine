@@ -8,7 +8,7 @@ import time
 #Defines a simulation class and a state class
 
 class Simulation:
-    def __init__(self, vehicle, controller, path = None, profile = None, mapMatchType = "euler", maxTime = None): 
+    def __init__(self, vehicle, controller, path = None, profile = None, mapMatchType = "euler", maxTime = None, vStart = 10.): 
         self.path = path
         self.vehicle = vehicle
         self.profile = profile
@@ -19,13 +19,14 @@ class Simulation:
         self.ts = 0.01 #simulation time in seconds
         self.mapMatchType = mapMatchType
         self.maxTime = maxTime
+        self.vStart = vStart
         
         
     def simulate(self):
         ##initialize states and instantiate objects
 
         if self.profile is None:
-            Ux0 = 10.  #specify start state
+            Ux0 = self.vStart  #specify start state
         else:
             Ux0 = self.profile.Ux[0] #start car at the initial velocity specified in the path
 

@@ -1,11 +1,10 @@
 import matplotlib.pyplot as plt
-from vehicle_lib import *
-from tiremodel_lib import *
-from velocityprofile_lib import * 
-from path_lib import *
-from sim_lib import *
-from controllers import *
-from numpy import genfromtxt
+from utils.vehicle_lib import *
+from utils.tiremodel_lib import *
+from utils.velocityprofile_lib import * 
+from utils.path_lib import *
+from utils.sim_lib import *
+from utils.controllers import *
 import time
 
 
@@ -13,32 +12,31 @@ import time
 shelley = Vehicle()
 
 #Create controller object 
-controller = OpenLoopControl(shelley, delta = 2*np.pi / 180, Fx = 100.)
+controller = OpenLoopControl(shelley, delta = 3.8*np.pi / 180, Fx = 400.)
 
 #simulate for 100 seconds
-bikeSim = Simulation(shelley, controller, maxTime = 0.1) 
+bikeSim = Simulation(shelley, controller, maxTime = 2., vStart = 20.) 
 logFile = bikeSim.simulate()
 
-print(logFile['deltaCmd'])
+plt.subplot(3,1,1)
+plt.plot(logFile['t'], logFile['Uy'])
+plt.xlabel('t (sec)')
+plt.xlim(0,2)
+plt.ylabel('Uy (m/s)')
+
+plt.subplot(3,1,2)
+plt.plot(logFile['t'], logFile['r'])
+plt.xlabel('t (sec)')
+plt.ylabel('r (rad/s')
+plt.xlim(0,2)
 
 
-
-#plt.figure()
-#plt.plot(logFile['s'], logFile['UxDes'])
-#plt.plot(logFile['s'], logFile['Ux'])
-##plt.plot(s, UxDesired)
-#plt.xlabel('s (meters)')
-#plt.ylabel('Desired Velocity (m)')
-#plt.legend(['PySim', 'MATLAB'])
-#
-#
-plt.figure()
-plt.plot(logFile['s'], logFile['Uy'])
-##plt.plot(s, UxDesired)
-#plt.xlabel('s (meters)')
-#plt.ylabel('e (meters)')
-##plt.legend(['PySim', 'MATLAB'])
-#plt.show()
-#
+plt.subplot(3,1,3)
+plt.plot(logFile['t'], logFile['Ux'])
+plt.xlabel('t (sec)')
+plt.ylabel('Ux (meters/s')
+plt.ylim(15, 25)
+plt.xlim(0,2)
 
 
+plt.show()
