@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 import tiremodel_lib as tm
 import vehicle_lib
 import path_lib
@@ -15,7 +16,7 @@ class Simulation:
         self.controller = controller
         self.isRunning = True
         self.physics = "bicycle"
-        self.logger = Logger()
+        self.logFile = {}
         self.ts = 0.01 #simulation time in seconds
         self.mapMatchType = mapMatchType
         self.maxTime = maxTime
@@ -53,7 +54,7 @@ class Simulation:
             auxVars = self.controller.updateInput(localState, controlInput)            
 
             #Update state
-            self.updateState(controlInput, localState, globalState, auxVars)
+            derivs = self.updateState(controlInput, localState, globalState, auxVars)
 
             #Append counter and print to screen
             counter = counter + 1
@@ -61,13 +62,16 @@ class Simulation:
 
 
             #save signals needed
-
+            AxDes = auxVars["AxDes"]
             UxDes = auxVars["UxDes"]                
             log.append('t',counter*self.ts)
+            log.append('K', auxVars["K"])
             log.append('Ux',localState.Ux)
+            log.append('Ax', derivs["Ax"])
             log.append('s', localState.s)
             log.append('e', localState.e)
             log.append('UxDes', UxDes) 
+            log.append('AxDes', AxDes)
             log.append('deltaPsi', localState.deltaPsi)
             log.append('posE', globalState.posE)
             log.append('posN', globalState.posN)
@@ -78,9 +82,8 @@ class Simulation:
             log.append('FxCmd', controlInput.Fx)
             log.incrementCounter()
 
-
-
-        return log.getData()
+        self.logFile = log.getData()
+        return self.logFile
 
 
 
@@ -120,13 +123,98 @@ class Simulation:
             #print(pctComplete)
             #print("Distance Along Path is %04d meters") % localState.s
 
-
     def updateState(self, controlInput, localState, globalState, auxVars):
         K = auxVars["K"]
         UxDes = auxVars["UxDes"]
         if self.physics is "bicycle":
-            localState, globalState = bicycleModel(self.vehicle, controlInput, localState, globalState, self.mapMatchType, self.ts, K)
-            return localState, globalState
+            derivs = bicycleModel(self.vehicle, controlInput, localState, globalState, self.mapMatchType, self.ts, K)
+        
+        return derivs
+
+    #plots simulation results        
+    def plotResults(self, xaxis = "s"):
+
+    	#unpack arrays for plotting
+    	posE = self.logFile["posE"]
+    	posN = self.logFile["posN"]
+    	e = self.logFile["e"]
+    	dPsi = self.logFile["deltaPsi"]
+    	s = self.logFile["s"]
+    	t = self.logFile["t"]
+    	Ux = self.logFile["Ux"]
+    	Ax = self.logFile["Ax"]
+    	UxDes = self.logFile["UxDes"]
+    	AxDes = self.logFile["AxDes"]
+    	K = self.logFile["K"]
+
+    	
+
+    	#auxillary calculations
+    	posEdes = self.path.posE
+    	posNdes = self.path.posN
+
+    	if xaxis is "s":
+    		x = s
+    		xstr = "s (m)"
+    	else:
+    		x = t
+    		xstr = "t (sec)" 
+
+
+    	#Plot the path and the world
+    	plt.figure()
+    	plt.plot(posE, posN,'k', linewidth = 2)
+    	plt.plot(posEdes, posNdes,'k--', linewidth = 1)
+    	plt.grid(True)
+    	plt.axis('equal')
+    	plt.legend(('Actual','Desired'))
+    	plt.xlabel('East')
+    	plt.ylabel('North')
+
+
+    	#plot the tracking errors
+    	plt.figure()
+    	ax1=plt.subplot(2, 1, 1)
+    	ax1.plot(x, e,'k', linewidth = 2)
+    	ax1.plot(x, dPsi * 180 / np.pi,'r', linewidth = 2)
+    	plt.grid(True)
+    	plt.legend(('e (m)','dPsi (deg)'))
+    	plt.xlabel(xstr)
+
+    	ax2 = plt.subplot(2, 1, 2, sharex = ax1)
+    	ax2.plot(x, Ux - UxDes,'k', linewidth = 2)
+    	plt.grid(True)
+    	plt.ylabel("Speed Error (m/s)")
+    	plt.xlabel(xstr)
+
+    	#plot the velocity profile
+    	plt.figure()
+    	plt.subplot(3, 1, 1)
+    	plt.plot(x, Ux,'k', linewidth = 2)
+    	plt.plot(x, UxDes,'k--', linewidth = 1)
+    	plt.grid(True)
+    	plt.legend(('Actual','Desired'))
+    	plt.ylabel('Velocity (m/s)')
+    	plt.xlabel(xstr)
+
+    	plt.subplot(3, 1, 2)
+    	plt.plot(x, Ax,'k', linewidth = 2)
+    	plt.plot(x, AxDes,'k--', linewidth = 1)
+    	plt.grid(True)
+    	plt.legend(('Actual','Desired'))
+    	plt.ylabel('Acceleration (m/s2)')
+    	plt.xlabel(xstr)
+
+    	plt.subplot(3, 1, 3)
+    	plt.plot(x, K,'k', linewidth = 2)
+    	plt.grid(True)
+    	plt.ylabel('Curvature (1/m)')
+    	plt.xlabel(xstr)
+
+    	plt.show()
+
+
+    	
 
 class LocalState:
     def __init__(self, Ux=0.0, Uy=0.0, r=0.0, e=0.0, deltaPsi=0.0, s=0.0):
@@ -443,6 +531,11 @@ def  bicycleModel(vehicle, controlInput, localState, globalState, matchType, ts,
     dN =   Ux * np.cos(psi) - Uy * np.sin(psi)
     dotPsi = r 
 
+    Ax = dUx - r*Uy
+    Ay = dUy + r*Ux 
+
+    derivs = {"dUy": dUy, "dr": dr, "dUx": dUx, "dE": dE, "dN": dN, "dotPsi": dotPsi, "Ax": Ax, "Ay": Ay}
+
     #update states with Euler integration
     Uy = Uy + ts * dUy
     r  = r + ts * dr
@@ -461,7 +554,7 @@ def  bicycleModel(vehicle, controlInput, localState, globalState, matchType, ts,
     localState.update(Ux, Uy, r, e, deltaPsi, s)
     globalState.update(posE, posN, psi)
         
-    return localState, globalState  
+    return derivs 
       
 
 

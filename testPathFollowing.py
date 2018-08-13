@@ -6,8 +6,6 @@ from utils.path_lib import *
 from utils.sim_lib import *
 from utils.controllers import *
 from numpy import genfromtxt
-import time
-import pdb
 
 
 #Create vehicle object
@@ -15,9 +13,10 @@ shelley = Vehicle()
 
 #Create path object
 oval = Path()
-oval.loadFromMAT("maps/cpgOpen.mat")
+oval.loadFromMAT("maps/simpleRace.mat")
+print(oval.isOpen)
 
-#Create speed profile
+# Create speed profile
 speedProfile = VelocityProfile("racing")
 speedProfile.generate(shelley, oval, friction = 0.7, vMax = 50)
 
@@ -28,24 +27,5 @@ controller = LaneKeepingController(oval, shelley, speedProfile)
 bikeSim = Simulation(shelley, controller, path = oval, profile = speedProfile, mapMatchType = "closest") 
 logFile = bikeSim.simulate()
 
-
-plt.close('all')
-
-plt.figure()
-plt.plot(logFile['s'], logFile['e'])
-plt.xlabel('s (meters)')
-plt.ylabel('e (meters)')
-
-
-plt.figure()
-plt.plot(logFile['s'], logFile['deltaPsi']*180 / np.pi)
-plt.xlabel('s (meters)')
-plt.ylabel('dPsi (deg)')
-
-plt.figure()
-plt.plot(logFile['s'], logFile['Ux'])
-plt.plot(logFile['s'], logFile['UxDes'])
-plt.xlabel('s (meters)')
-plt.ylabel('Ux (m/s)')
-plt.legend(['Actual', 'Desired'])
-plt.show()
+#analyze results
+bikeSim.plotResults()

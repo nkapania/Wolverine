@@ -13,7 +13,7 @@ class Path:
 		self.roadPsi = [0] #heading
 		self.curvature = [0] #curvature
 		self.s = [0]
-		self.type = "open" #does not form a loop
+		self.isOpen = True #open = whether track forms loop or not
 		self.referencePoint =np.zeros((3,1)) #GPS reference point
 		self.refPointName = "none" #name of reference point
 
@@ -35,6 +35,7 @@ class Path:
 		self.posN = path['world']['roadN'].sum()
 		self.roadPsi = path['world']['roadPsi'].sum()
 		self.roadIC = path['world']['road_IC'].sum()
+		self.isOpen = bool(path['world']['isOpen'].sum())
 
 
 
