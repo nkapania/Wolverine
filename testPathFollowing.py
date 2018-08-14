@@ -28,4 +28,8 @@ bikeSim = Simulation(shelley, controller, path = oval, profile = speedProfile, m
 logFile = bikeSim.simulate()
 
 #analyze results
-bikeSim.plotResults()
+#bikeSim.plotResults()
+
+#animate car
+anim = MyAnimation(logFile, oval, shelley, timeStep = bikeSim.ts, interval = 5)
+anim.run()

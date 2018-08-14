@@ -10,6 +10,8 @@ class Vehicle:
 			
 			self.a = 1.0441 #CG to front wheelbase [m]
 			self.b = 1.4248 #CG to rear wheelbase [m] 
+			self.d = 1.50   #vehicle width, meters (used for plotting only)
+			self.rW = 0.34 #wheel radius, meters (used for plotting only)
 			self.m = 1512.4 #vehicle mass (kg)
 			self.Cf = 160000.0 #vehicle cornering stiffness (N)
 			self.Cr = 180000.0 #vehicle cornering stiffness (N)

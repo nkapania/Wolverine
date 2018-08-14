@@ -278,6 +278,88 @@ class Simulation:
     	plt.show()
 
 
+class MyAnimation:
+    def __init__(self, logFile, path, veh, timeStep = 0.01, interval = 25):
+        #plot the desired road
+        self.f = plt.figure()
+        self.logFile = logFile
+        self.path = path
+        self.timeStep = timeStep
+        self.windowSize = 20. #meters
+        self.interval = interval
+        self.veh = veh
+
+        plt.ion
+
+        plt.plot(self.path.posE, self.path.posN, 'k--',Linewidth = 2.0)
+        plt.grid('on')
+        plt.axis('equal')
+        
+
+
+    def run(self):
+
+        #unpack variables
+        x = self.logFile["posE"]
+        y = self.logFile["posN"]
+        delta = self.logFile["deltaCmd"]
+        psi  = self.logFile["psi"]
+        a = self.veh.a
+        b = self.veh.b
+        d = self.veh.d
+        rW = self.veh.rW
+
+
+        #calculate vehicle coordinates
+        FrontBody, RearBody, FrontAxle, RearAxle, RightFrontTire, RightRearTire, LeftFrontTire, LeftRearTire = _plotVehicle(x[0], y[0], psi[0], delta[0], a, b, d, rW)
+        print(FrontBody)
+
+
+        #plot vehicle coordinates - needs to be done once outside of loop I believe
+        l0,  = plt.plot(x[0], y[0], 'ro', MarkerSize=8)
+
+        l1, = plt.plot(FrontBody[0,:]  ,FrontBody[1,:], 'gray', LineWidth = 2.5)
+        l2, = plt.plot(RearBody[0,:]   ,RearBody[1,:], 'gray', LineWidth = 2.5) 
+        l3, = plt.plot(FrontAxle[0,:]  ,FrontAxle[1,:], 'gray', LineWidth = 2.5)
+        l4, = plt.plot(RearAxle[0,:]    , RearAxle[1,:], 'gray', LineWidth = 2.5)
+        l5, = plt.plot(RightFrontTire[0,:] ,RightFrontTire[1,:], 'gray', LineWidth = 3)
+        l6, = plt.plot(RightRearTire[0,:]  ,RightRearTire[1,:], 'gray', LineWidth = 3)
+        l7, = plt.plot(LeftFrontTire[0,:]  ,LeftFrontTire[1,:], 'gray', LineWidth = 3)
+        l8, = plt.plot(LeftRearTire[0,:]   ,LeftRearTire[1,:], 'gray', LineWidth = 3)
+
+
+        for i in np.arange(0,len(x), self.interval):
+            #calculate vehicle coordinates
+            FrontBody, RearBody, FrontAxle, RearAxle, RightFrontTire, RightRearTire, LeftFrontTire, LeftRearTire = _plotVehicle(x[i], y[i], psi[i], delta[i], a, b, d, rW)
+            xi = x[i]
+            yi = y[i]
+
+            l0.set_xdata(xi)
+            l0.set_ydata(yi)
+            l1.set_xdata(FrontBody[0,:])
+            l1.set_ydata(FrontBody[1,:])
+            l2.set_xdata(RearBody[0,:])
+            l2.set_ydata(RearBody[1,:])
+            l3.set_xdata(FrontAxle[0,:])
+            l3.set_ydata(FrontAxle[1,:])
+            l4.set_xdata(RearAxle[0,:])
+            l4.set_ydata(RearAxle[1,:])
+            l5.set_xdata(RightFrontTire[0,:])
+            l5.set_ydata(RightFrontTire[1,:])
+            l6.set_xdata(RightRearTire[0,:])
+            l6.set_ydata(RightRearTire[1,:])
+            l7.set_xdata(LeftFrontTire[0,:])
+            l7.set_ydata(LeftFrontTire[1,:])
+            l8.set_xdata(LeftRearTire[0,:])
+            l8.set_ydata(LeftRearTire[1,:])
+
+            plt.xlim([xi - self.windowSize, xi + self.windowSize])
+            plt.ylim([yi - self.windowSize, yi + self.windowSize])
+
+            self.f.canvas.draw()
+            plt.pause(self.timeStep)
+
+        plt.show()
     	
 
 class LocalState:
@@ -528,26 +610,6 @@ class MapMatch:
 
             return pSE
 
-class Animation:
-    def __init__(self, path, logFile):
-    	self.path = path
-    	self.logFile = logFile
-
-    def animate(self, numFrames = 10):
-    	return
-    	#STOPPED HERE
-    	# N = self.logFile["N"]
-
-    	# for i in range(N):
-
-    	# 	#Don't plot every frame
-    	# 	if i%numFrames is 0:
-    	# 		self.plotVehicle()
-
-
-
-
-
 
 
 def  bicycleModel(vehicle, controlInput, localState, globalState, matchType, ts, K):
@@ -624,16 +686,6 @@ def  bicycleModel(vehicle, controlInput, localState, globalState, matchType, ts,
     return derivs, slips, forces 
       
 
-
-
-
-
-
-
-
-
-
-
 def getSlips(localState, veh, controlInput):
     Ux = localState.Ux
     Uy = localState.Uy
@@ -667,3 +719,58 @@ def getFx(FxDes, Ux, vehicle):
     FxR = Fx * vehicle.a / vehicle.L
     return FxF, FxR
 
+def _plotVehicle(posE, posN, psi, delta, a, b, d, rW):
+    #returns position of vehicle frame given coordinates of vehicle cg, steer angle, and dimensions a, b, d, and rW
+    FrontAxle_Center_x = posE - a*np.sin(psi);
+    FrontAxle_Center_y = posN + a*np.cos(psi);
+
+    RearAxle_Center_x = posE + b*np.sin(psi);
+    RearAxle_Center_y = posN - b*np.cos(psi);
+    
+    FrontAxle_Right_x = FrontAxle_Center_x + (d/2)*np.cos(psi);
+    FrontAxle_Right_y = FrontAxle_Center_y + (d/2)*np.sin(psi);
+
+    FrontAxle_Left_x = FrontAxle_Center_x - (d/2)*np.cos(psi);
+    FrontAxle_Left_y = FrontAxle_Center_y - (d/2)*np.sin(psi);
+
+    RearAxle_Right_x = RearAxle_Center_x + (d/2)*np.cos(psi);
+    RearAxle_Right_y = RearAxle_Center_y + (d/2)*np.sin(psi);
+
+    RearAxle_Left_x = RearAxle_Center_x - (d/2)*np.cos(psi);
+    RearAxle_Left_y = RearAxle_Center_y - (d/2)*np.sin(psi);
+    
+    RightFrontTire_Front_x = FrontAxle_Right_x - rW*np.sin(psi+delta);
+    RightFrontTire_Front_y = FrontAxle_Right_y + rW*np.cos(psi+delta);
+
+    RightFrontTire_Back_x = FrontAxle_Right_x + rW*np.sin(psi+delta);
+    RightFrontTire_Back_y = FrontAxle_Right_y - rW*np.cos(psi+delta);
+
+    RightRearTire_Front_x = RearAxle_Right_x - rW*np.sin(psi);
+    RightRearTire_Front_y = RearAxle_Right_y + rW*np.cos(psi);
+
+    RightRearTire_Back_x = RearAxle_Right_x + rW*np.sin(psi);
+    RightRearTire_Back_y = RearAxle_Right_y - rW*np.cos(psi);
+
+    LeftFrontTire_Front_x = FrontAxle_Left_x - rW*np.sin(psi+delta);
+    LeftFrontTire_Front_y = FrontAxle_Left_y + rW*np.cos(psi+delta);
+
+    LeftFrontTire_Back_x = FrontAxle_Left_x + rW*np.sin(psi+delta);
+    LeftFrontTire_Back_y = FrontAxle_Left_y - rW*np.cos(psi+delta);
+
+    LeftRearTire_Front_x = RearAxle_Left_x - rW*np.sin(psi);
+    LeftRearTire_Front_y = RearAxle_Left_y + rW*np.cos(psi);
+
+    LeftRearTire_Back_x = RearAxle_Left_x + rW*np.sin(psi);
+    LeftRearTire_Back_y = RearAxle_Left_y - rW*np.cos(psi);
+
+
+    FrontBody =  np.array([[posE, FrontAxle_Center_x], [posN, FrontAxle_Center_y]]).squeeze()
+    RearBody  =  np.array([[posE, RearAxle_Center_x] , [posN, RearAxle_Center_y]]).squeeze()
+    FrontAxle =  np.array([[FrontAxle_Left_x, FrontAxle_Right_x], [FrontAxle_Left_y, FrontAxle_Right_y]]).squeeze()
+    RearAxle  =  np.array([[RearAxle_Left_x, RearAxle_Right_x], [RearAxle_Left_y, RearAxle_Right_y]]).squeeze()
+    RightFrontTire = np.array([[RightFrontTire_Front_x, RightFrontTire_Back_x],  [RightFrontTire_Front_y, RightFrontTire_Back_y]]).squeeze()
+    RightRearTire  = np.array([[RightRearTire_Front_x, RightRearTire_Back_x],    [RightRearTire_Front_y, RightRearTire_Back_y]]).squeeze()
+    LeftFrontTire  = np.array([[LeftFrontTire_Front_x, LeftFrontTire_Back_x],    [LeftFrontTire_Front_y, LeftFrontTire_Back_y]]).squeeze()
+    LeftRearTire   = np.array([[LeftRearTire_Front_x, LeftRearTire_Back_x],      [LeftRearTire_Front_y, LeftRearTire_Back_y]]).squeeze()
+
+    return FrontBody, RearBody, FrontAxle, RearAxle, RightFrontTire, RightRearTire, LeftFrontTire, LeftRearTire
