@@ -54,7 +54,7 @@ class Simulation:
             auxVars = self.controller.updateInput(localState, controlInput)            
 
             #Update state
-            derivs = self.updateState(controlInput, localState, globalState, auxVars)
+            derivs, slips, forces = self.updateState(controlInput, localState, globalState, auxVars)
 
             #Append counter and print to screen
             counter = counter + 1
@@ -80,6 +80,17 @@ class Simulation:
             log.append('Uy', localState.Uy)
             log.append('deltaCmd', controlInput.delta)
             log.append('FxCmd', controlInput.Fx)
+            log.append('alphaF', slips["alphaF"])
+            log.append('alphaR', slips["alphaR"])
+            log.append('alphaFdes', auxVars["alphaFdes"])
+            log.append('alphaRdes', auxVars["alphaRdes"])
+            log.append('FxF', forces["FxF"])
+            log.append('FxR', forces["FxR"])
+            log.append('FyF', forces["FyF"])
+            log.append('FyR', forces["FyR"])
+            log.append('zetaF', forces["zetaF"])
+            log.append('zetaR', forces["zetaR"])
+
             log.incrementCounter()
 
         self.logFile = log.getData()
@@ -127,9 +138,9 @@ class Simulation:
         K = auxVars["K"]
         UxDes = auxVars["UxDes"]
         if self.physics is "bicycle":
-            derivs = bicycleModel(self.vehicle, controlInput, localState, globalState, self.mapMatchType, self.ts, K)
+            derivs, slips, forces = bicycleModel(self.vehicle, controlInput, localState, globalState, self.mapMatchType, self.ts, K)
         
-        return derivs
+        return derivs, slips, forces
 
     #plots simulation results        
     def plotResults(self, xaxis = "s"):
@@ -146,6 +157,17 @@ class Simulation:
     	UxDes = self.logFile["UxDes"]
     	AxDes = self.logFile["AxDes"]
     	K = self.logFile["K"]
+    	alphaFdes = self.logFile["alphaFdes"]
+    	alphaRdes = self.logFile["alphaRdes"]
+    	alphaF = self.logFile["alphaF"]
+    	alphaR = self.logFile["alphaR"]
+    	FyF = self.logFile["FyF"]
+    	FyR = self.logFile["FyR"]
+    	FxF = self.logFile["FxF"]
+    	FxR = self.logFile["FxR"]
+    	zetaF = self.logFile["zetaF"]
+    	zetaR = self.logFile["zetaR"]
+
 
     	
 
@@ -179,6 +201,7 @@ class Simulation:
     	ax1.plot(x, dPsi * 180 / np.pi,'r', linewidth = 2)
     	plt.grid(True)
     	plt.legend(('e (m)','dPsi (deg)'))
+    	plt.ylim([-5., 5.])
     	plt.xlabel(xstr)
 
     	ax2 = plt.subplot(2, 1, 2, sharex = ax1)
@@ -189,27 +212,68 @@ class Simulation:
 
     	#plot the velocity profile
     	plt.figure()
-    	plt.subplot(3, 1, 1)
-    	plt.plot(x, Ux,'k', linewidth = 2)
-    	plt.plot(x, UxDes,'k--', linewidth = 1)
+    	ax3 = plt.subplot(3, 1, 1, sharex = ax1)
+    	ax3.plot(x, Ux,'k', linewidth = 2)
+    	ax3.plot(x, UxDes,'k--', linewidth = 1)
     	plt.grid(True)
     	plt.legend(('Actual','Desired'))
     	plt.ylabel('Velocity (m/s)')
     	plt.xlabel(xstr)
 
-    	plt.subplot(3, 1, 2)
-    	plt.plot(x, Ax,'k', linewidth = 2)
-    	plt.plot(x, AxDes,'k--', linewidth = 1)
+    	ax4 = plt.subplot(3, 1, 2, sharex = ax1)
+    	ax4.plot(x, Ax,'k', linewidth = 2)
+    	ax4.plot(x, AxDes,'k--', linewidth = 1)
     	plt.grid(True)
     	plt.legend(('Actual','Desired'))
     	plt.ylabel('Acceleration (m/s2)')
     	plt.xlabel(xstr)
 
-    	plt.subplot(3, 1, 3)
-    	plt.plot(x, K,'k', linewidth = 2)
+    	ax5 = plt.subplot(3, 1, 3, sharex = ax1)
+    	ax5.plot(x, K,'k', linewidth = 2)
     	plt.grid(True)
     	plt.ylabel('Curvature (1/m)')
     	plt.xlabel(xstr)
+
+    	#plot the tire slips
+    	plt.figure()
+    	ax6 = plt.subplot(2, 1, 1, sharex = ax1)
+    	ax6.plot(x, alphaF * 180 / np.pi,'k', linewidth = 2)
+    	ax6.plot(x, alphaFdes * 180 / np.pi,'k--', linewidth = 1)
+    	plt.grid(True)
+    	plt.legend(('Actual',' Desired'))
+    	plt.ylabel('Front Tire Slips (deg)')
+    	plt.xlabel(xstr)
+
+    	ax7 = plt.subplot(2, 1, 2, sharex = ax1)
+    	ax7.plot(x, alphaR * 180 / np.pi, 'k', linewidth = 2)
+    	ax7.plot(x, alphaRdes * 180 / np.pi, 'k--',linewidth = 1)
+    	plt.grid(True)
+    	plt.ylabel('Rear Tire Slips (deg)')
+
+    	#plot the tire forces
+    	plt.figure()
+    	ax8 = plt.subplot(3, 1, 1, sharex = ax1)
+    	ax8.plot(x, FyF / 1000,'k', linewidth = 2)
+    	ax8.plot(x, FyR / 1000,'b', linewidth = 2)
+    	plt.grid(True)
+    	plt.legend(('Front',' Rear'))
+    	plt.ylabel('Lateral Tire Forces (kN)')
+    	plt.xlabel(xstr)
+
+    	ax9 = plt.subplot(3, 1, 2, sharex = ax1)
+    	ax9.plot(x, FxF / 1000, 'k', linewidth = 2)
+    	ax9.plot(x, FxR / 1000, 'b',linewidth = 2)
+    	plt.legend(('Front','Rear'))
+    	plt.grid(True)
+    	plt.ylabel('Long. Tire Forces (kN)')
+
+    	ax10 = plt.subplot(3, 1, 3, sharex = ax1)
+    	ax10.plot(x, zetaF, 'k', linewidth = 1)
+    	ax10.plot(x, zetaR, 'r--',linewidth = 2)
+    	plt.legend(('Front','Rear'))
+    	plt.grid(True)
+    	plt.ylabel('zetas')
+
 
     	plt.show()
 
@@ -494,7 +558,6 @@ def  bicycleModel(vehicle, controlInput, localState, globalState, matchType, ts,
     delta = controlInput.delta
     
 
-
     Ux = localState.Ux    
     r = localState.r
     Uy = localState.Uy
@@ -514,6 +577,8 @@ def  bicycleModel(vehicle, controlInput, localState, globalState, matchType, ts,
     #calculate forces and tire slips
     FxF, FxR = getFx(FxDes, Ux, vehicle)
     alphaF, alphaR = getSlips(localState, vehicle, controlInput)
+    slips = {"alphaF": alphaF, "alphaR": alphaR}
+
     FyF, FyR, zetaF, zetaR = tm.coupledTireForces(alphaF, alphaR,  FxF, FxR, vehicle)
     
     
@@ -553,8 +618,10 @@ def  bicycleModel(vehicle, controlInput, localState, globalState, matchType, ts,
 
     localState.update(Ux, Uy, r, e, deltaPsi, s)
     globalState.update(posE, posN, psi)
+
+    forces = {"FyF": FyF, "FyR": FyR, "FxF": FxF, "FxR": FxR, "zetaF": zetaF, "zetaR": zetaR}
         
-    return derivs 
+    return derivs, slips, forces 
       
 
 

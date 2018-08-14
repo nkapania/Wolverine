@@ -13,12 +13,12 @@ shelley = Vehicle()
 
 #Create path object
 oval = Path()
-oval.loadFromMAT("maps/simpleRace.mat")
+oval.loadFromMAT("maps/THrace.mat")
 print(oval.isOpen)
 
 # Create speed profile
 speedProfile = VelocityProfile("racing")
-speedProfile.generate(shelley, oval, friction = 0.7, vMax = 50)
+speedProfile.generate(shelley, oval, friction = 0.92, vMax = 50)
 
 # #Create controller object - use lanekeeping
 controller = LaneKeepingController(oval, shelley, speedProfile)

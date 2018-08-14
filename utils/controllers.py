@@ -41,10 +41,10 @@ class LaneKeepingController():
 
 
     def updateInput(self, localState, controlInput):
-        delta, deltaFFW, deltaFB, K = _lanekeeping(self, localState)
+        delta, deltaFFW, deltaFB, K, alphaFdes, alphaRdes = _lanekeeping(self, localState)
         Fx, UxDes, AxDes, FxFFW, FxFB = _speedTracking(self, localState)
         controlInput.update(delta, Fx)
-        auxVars = {'K': K , 'UxDes': UxDes, 'AxDes': AxDes}
+        auxVars = {'K': K , 'UxDes': UxDes, 'AxDes': AxDes, 'alphaFdes': alphaFdes, 'alphaRdes': alphaRdes}
 
         return auxVars
 
@@ -104,7 +104,7 @@ def _lanekeeping(sim,localState):
     deltaFFW, betaFFW, FyFdes, FyRdes, alphaFdes, alphaRdes = _getDeltaFFW(sim, localState, K)
     deltaFB = _getDeltaFB(sim, localState, betaFFW)
     delta = deltaFFW + deltaFB
-    return delta, deltaFFW, deltaFB, K
+    return delta, deltaFFW, deltaFB, K, alphaFdes, alphaRdes
 
 
 def _speedTracking(sim, localState):
