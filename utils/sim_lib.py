@@ -3,13 +3,14 @@ import matplotlib.pyplot as plt
 import tiremodel_lib as tm
 import vehicle_lib
 import path_lib
+import scipy.io as sio
 from controllers import *
 import time
 
 #Defines a simulation class and a state class
 
 class Simulation:
-    def __init__(self, vehicle, controller, path = None, profile = None, mapMatchType = "euler", maxTime = None, vStart = 10.): 
+    def __init__(self, vehicle, controller, path = None, profile = None, mapMatchType = "euler", maxTime = None, vStart = 10., weightTransferType = None, tires = "fiala"): 
         self.path = path
         self.vehicle = vehicle
         self.profile = profile
@@ -21,6 +22,8 @@ class Simulation:
         self.mapMatchType = mapMatchType
         self.maxTime = maxTime
         self.vStart = vStart
+        self.weightTransferType = weightTransferType
+        self.tires = tires
         
         
     def simulate(self):
@@ -66,6 +69,11 @@ class Simulation:
             UxDes = auxVars["UxDes"]                
             log.append('t',counter*self.ts)
             log.append('K', auxVars["K"])
+            log.append('alphaFdes', auxVars["alphaFdes"])
+            log.append('alphaRdes', auxVars["alphaRdes"])
+            log.append('deltaFFW',  auxVars["deltaFFW"])
+            log.append('deltaFB' ,  auxVars["deltaFB"])
+            log.append('betaFFW' ,  auxVars["betaFFW"])
             log.append('Ux',localState.Ux)
             log.append('Ax', derivs["Ax"])
             log.append('s', localState.s)
@@ -82,14 +90,14 @@ class Simulation:
             log.append('FxCmd', controlInput.Fx)
             log.append('alphaF', slips["alphaF"])
             log.append('alphaR', slips["alphaR"])
-            log.append('alphaFdes', auxVars["alphaFdes"])
-            log.append('alphaRdes', auxVars["alphaRdes"])
             log.append('FxF', forces["FxF"])
             log.append('FxR', forces["FxR"])
             log.append('FyF', forces["FyF"])
             log.append('FyR', forces["FyR"])
             log.append('zetaF', forces["zetaF"])
             log.append('zetaR', forces["zetaR"])
+            log.append('FzF', forces["FzF"])
+            log.append('FzR', forces["FzR"])
 
             log.incrementCounter()
 
@@ -104,14 +112,17 @@ class Simulation:
 
         #Check if we have ended the simulation. If running open loop, stop after maximum time is specified. Otherwise stop once we reach the end of the track or if we go unstable
 
-        
+        t = counter * self.ts
         if self.path is None:  
             assert (self.maxTime != None), "Must specify time to run"
-            t = counter * self.ts
             if t > self.maxTime:
                 self.isRunning = False
 
         else:
+            
+            if t > self.maxTime:
+                self.isRunning = False
+
             if localState.s > (self.path.s[-1] - 0.55): #Stop simulation a little before end of path
                 self.isRunning = False
                 runTime = counter * self.ts
@@ -138,9 +149,16 @@ class Simulation:
         K = auxVars["K"]
         UxDes = auxVars["UxDes"]
         if self.physics is "bicycle":
-            derivs, slips, forces = bicycleModel(self.vehicle, controlInput, localState, globalState, self.mapMatchType, self.ts, K)
+            derivs, slips, forces = bicycleModel(self.vehicle, controlInput, localState, globalState, self.mapMatchType, self.ts, K, self.weightTransferType, self.tires)
         
         return derivs, slips, forces
+
+
+    def save(self, filename):
+        sio.savemat(filename, self.logFile)
+        print("Simulation results saved to " + filename)
+
+
 
     #plots simulation results        
     def plotResults(self, xaxis = "s"):
@@ -153,6 +171,7 @@ class Simulation:
     	s = self.logFile["s"]
     	t = self.logFile["t"]
     	Ux = self.logFile["Ux"]
+        Uy = self.logFile["Uy"]
     	Ax = self.logFile["Ax"]
     	UxDes = self.logFile["UxDes"]
     	AxDes = self.logFile["AxDes"]
@@ -167,6 +186,11 @@ class Simulation:
     	FxR = self.logFile["FxR"]
     	zetaF = self.logFile["zetaF"]
     	zetaR = self.logFile["zetaR"]
+        deltaFFW = self.logFile["deltaFFW"]
+        betaFFW  = self.logFile["betaFFW"]
+        deltaFB  = self.logFile["deltaFB"]
+        delta = self.logFile["deltaCmd"]
+        beta = np.tan(np.divide(Uy,Ux))
 
 
     	
@@ -274,6 +298,21 @@ class Simulation:
     	plt.grid(True)
     	plt.ylabel('zetas')
 
+        plt.figure()
+        ax11 = plt.subplot(2, 1, 1, sharex = ax1)
+        ax11.plot(x, beta * 180/np.pi, 'k', linewidth = 1)
+        ax11.plot(x, betaFFW * 180/np.pi, 'r',linewidth = 2)
+        plt.legend(('beta','betaFFW'))
+        plt.grid(True)
+        plt.ylabel('Sideslip (deg)')
+
+        ax12 = plt.subplot(2, 1, 2, sharex = ax1)
+        ax12.plot(x, delta * 180 / np.pi, 'k', linewidth = 1)
+        ax12.plot(x, deltaFFW * 180 / np.pi, 'r--',linewidth = 2)
+        ax12.plot(x, deltaFB * 180 / np.pi, 'g--',linewidth = 2)
+        plt.legend(('delta','deltaFFW','deltaFB'))
+        plt.grid(True)
+        plt.ylabel('Steering Command (deg)')
 
     	plt.show()
 
@@ -612,7 +651,7 @@ class MapMatch:
 
 
 
-def  bicycleModel(vehicle, controlInput, localState, globalState, matchType, ts, K):
+def  bicycleModel(vehicle, controlInput, localState, globalState, matchType, ts, K, weightTransferType, tireType):
     #Implementation of bicycle model with force derating, but no longitudinal dynamics
 
     #Unpack variables for brevity
@@ -638,10 +677,22 @@ def  bicycleModel(vehicle, controlInput, localState, globalState, matchType, ts,
 
     #calculate forces and tire slips
     FxF, FxR = getFx(FxDes, Ux, vehicle)
+    FzF, FzR = _getNormalForces(weightTransferType, FxF+FxR, vehicle)
     alphaF, alphaR = getSlips(localState, vehicle, controlInput)
     slips = {"alphaF": alphaF, "alphaR": alphaR}
 
-    FyF, FyR, zetaF, zetaR = tm.coupledTireForces(alphaF, alphaR,  FxF, FxR, vehicle)
+    if tireType is "coupled":
+        FyF, FyR, zetaF, zetaR = tm.coupledTireForces(alphaF, alphaR,  FxF, FxR, FzF, FzR, vehicle)
+    elif tireType is "fiala":
+        #just set FxF and FxR to 0.
+        FyF, FyR, zetaF, zetaR = tm.coupledTireForces(alphaF, alphaR,  0., 0., FzF, FzR, vehicle)
+    elif tireType is "linear":
+        FyF = -vehicle.Cf * alphaF
+        FyR = -vehicle.Cr * alphaR
+        zetaF = 1.
+        zetaR = 1.
+    else:
+        sys.exit("improper tire type specified")
     
     
     #Calculate state derivatives and update
@@ -681,7 +732,7 @@ def  bicycleModel(vehicle, controlInput, localState, globalState, matchType, ts,
     localState.update(Ux, Uy, r, e, deltaPsi, s)
     globalState.update(posE, posN, psi)
 
-    forces = {"FyF": FyF, "FyR": FyR, "FxF": FxF, "FxR": FxR, "zetaF": zetaF, "zetaR": zetaR}
+    forces = {"FyF": FyF, "FyR": FyR, "FxF": FxF, "FxR": FxR, "zetaF": zetaF, "zetaR": zetaR, "FzF": FzF, "FzR": FzR}
         
     return derivs, slips, forces 
       
@@ -774,3 +825,23 @@ def _plotVehicle(posE, posN, psi, delta, a, b, d, rW):
     LeftRearTire   = np.array([[LeftRearTire_Front_x, LeftRearTire_Back_x],      [LeftRearTire_Front_y, LeftRearTire_Back_y]]).squeeze()
 
     return FrontBody, RearBody, FrontAxle, RearAxle, RightFrontTire, RightRearTire, LeftFrontTire, LeftRearTire
+
+def _getNormalForces(weightTransferType, Fx, veh):
+    if weightTransferType is None:
+        #just return the static normal forces
+        FzF = veh.FzF
+        FzR = veh.FzR
+
+    if weightTransferType is "steadystate":
+        L = veh.a + veh.b
+        m = veh.m
+        a = veh.a
+        b = veh.b
+        g = veh.g
+        h = veh.h
+
+        FzF = 1 / L * (m*b*g - h * Fx)
+        FzR = 1 / L * (m*a*g + h * Fx)
+
+    return FzF, FzR
+

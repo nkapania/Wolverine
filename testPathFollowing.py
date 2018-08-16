@@ -9,27 +9,33 @@ from numpy import genfromtxt
 
 
 #Create vehicle object
-shelley = Vehicle()
+shelley = Vehicle(vehicleName = "shelley")
 
 #Create path object
-oval = Path()
-oval.loadFromMAT("maps/THrace.mat")
-print(oval.isOpen)
+track = Path()
+track.loadFromMAT("maps/THrace.mat")
 
 # Create speed profile
 speedProfile = VelocityProfile("racing")
-speedProfile.generate(shelley, oval, friction = 0.92, vMax = 50)
+speedProfile.generate(shelley, track, friction = 0.9, vMax = 99)
 
 # #Create controller object - use lanekeeping
-controller = LaneKeepingController(oval, shelley, speedProfile)
+controller = LaneKeepingController(track, shelley, speedProfile)
 
 #simulate
-bikeSim = Simulation(shelley, controller, path = oval, profile = speedProfile, mapMatchType = "closest") 
+bikeSim = Simulation(shelley, controller, path = track, profile = speedProfile, mapMatchType = "closest", weightTransferType = None, tires = "linear") 
 logFile = bikeSim.simulate()
 
 #analyze results
 #bikeSim.plotResults()
 
 #animate car
-anim = MyAnimation(logFile, oval, shelley, timeStep = bikeSim.ts, interval = 5)
-anim.run()
+# anim = MyAnimation(logFile, track, shelley, timeStep = bikeSim.ts, interval = 5)
+# anim.run()
+
+#write to .mat file
+#bikeSim.save('logs/test1.mat')
+
+plt.plot(logFile["s"], logFile["FyF"])
+plt.plot(logFile["s"], logFile["FyR"])
+plt.show()

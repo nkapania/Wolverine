@@ -17,15 +17,10 @@ def fiala(C, muP, muS, alpha, Fz):
 
 	return Fy
 
-
-
 #Coupled tire model - accounts for derating of lateral tire force when longitudinal force is applied 
-def coupledTireForces(alphaF, alphaR,  FxF, FxR, vehicle):
+def coupledTireForces(alphaF, alphaR,  FxF, FxR, FzF, FzR, vehicle):
 	muF = vehicle.muF
 	muR = vehicle.muR
-
-	FzF = vehicle.FzF
-	FzR = vehicle.FzR
 
 	Cf = vehicle.Cf
 	Cr = vehicle.Cr

@@ -23,7 +23,7 @@ class Vehicle:
 			self.FzF = self.m*self.b*self.g/self.L   #Maximum force on front vehicles
 			self.FzR = self.m*self.a*self.g/self.L   #Maximium force on rear vehicles
 			self.D = 0.3638 #Drag coefficient
-			self.h = 0.75   #Distance from the ground
+			self.h = 0.55   #Distance from the ground
 			self.brakeTimeDelay = 0.25 #Seconds
 			self.rollResistance = 255.0 #Newtons
 			self.powerLimit = 160000.0 #Watts
