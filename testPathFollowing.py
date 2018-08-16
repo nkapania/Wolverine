@@ -1,12 +1,10 @@
 import matplotlib.pyplot as plt
-from utils.vehicle_lib import *
-from utils.tiremodel_lib import *
-from utils.velocityprofile_lib import * 
-from utils.path_lib import *
-from utils.sim_lib import *
-from utils.controllers import *
-from numpy import genfromtxt
-
+from utils.vehicles import *
+from utils.velocityprofiles import *
+from utils.tiremodels import *
+from utils.simulation import *
+from utils.paths import *
+from utils.control import *
 
 #Create vehicle object
 shelley = Vehicle(vehicleName = "shelley")

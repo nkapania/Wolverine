@@ -1,5 +1,5 @@
 import numpy as np
-import tiremodel_lib as tm
+import tiremodels as tm
 #Defines a vehicle class, with full parameters
 
 #Defaults to shelley variables

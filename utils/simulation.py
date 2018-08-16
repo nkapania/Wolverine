@@ -1,10 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import tiremodel_lib as tm
-import vehicle_lib
-import path_lib
+import tiremodels as tm
+import vehicles
+import paths
 import scipy.io as sio
-from controllers import *
+from control import *
 import time
 
 #Defines a simulation class and a state class

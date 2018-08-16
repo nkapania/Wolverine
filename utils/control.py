@@ -1,7 +1,7 @@
 import numpy as np
-import tiremodel_lib as tm
-import vehicle_lib
-import path_lib
+import tiremodels as tm
+import vehicles
+import paths
 import math
 
 
