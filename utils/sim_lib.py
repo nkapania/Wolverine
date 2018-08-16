@@ -10,7 +10,7 @@ import time
 #Defines a simulation class and a state class
 
 class Simulation:
-    def __init__(self, vehicle, controller, path = None, profile = None, mapMatchType = "euler", maxTime = None, vStart = 10., weightTransferType = None, tires = "fiala"): 
+    def __init__(self, vehicle, controller, path = None, profile = None, mapMatchType = "euler", maxTime = float('inf'), vStart = 10., weightTransferType = None, tires = "fiala"): 
         self.path = path
         self.vehicle = vehicle
         self.profile = profile

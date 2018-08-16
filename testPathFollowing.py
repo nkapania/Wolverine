@@ -17,25 +17,20 @@ track.loadFromMAT("maps/THrace.mat")
 
 # Create speed profile
 speedProfile = VelocityProfile("racing")
-speedProfile.generate(shelley, track, friction = 0.9, vMax = 99)
+speedProfile.generate(shelley, track, friction = 1.0, vMax = 99)
 
 # #Create controller object - use lanekeeping
 controller = LaneKeepingController(track, shelley, speedProfile)
 
 #simulate
-bikeSim = Simulation(shelley, controller, path = track, profile = speedProfile, mapMatchType = "closest", weightTransferType = None, tires = "linear") 
+bikeSim = Simulation(shelley, controller, path = track, profile = speedProfile, mapMatchType = "closest", weightTransferType = None, tires = "fiala", maxTime = 20.) 
 logFile = bikeSim.simulate()
 
 #analyze results
-#bikeSim.plotResults()
+bikeSim.plotResults()
 
-#animate car
+# #animate car
 # anim = MyAnimation(logFile, track, shelley, timeStep = bikeSim.ts, interval = 5)
 # anim.run()
-
 #write to .mat file
 #bikeSim.save('logs/test1.mat')
-
-plt.plot(logFile["s"], logFile["FyF"])
-plt.plot(logFile["s"], logFile["FyR"])
-plt.show()
