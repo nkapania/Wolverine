@@ -25,10 +25,12 @@ bikeSim = Simulation(shelley, controller, path = track, profile = speedProfile, 
 logFile = bikeSim.simulate()
 
 #analyze results
-bikeSim.plotResults()
+#bikeSim.plotResults()
 
 # #animate car
 # anim = MyAnimation(logFile, track, shelley, timeStep = bikeSim.ts, interval = 5)
 # anim.run()
+
+
 #write to .mat file
-#bikeSim.save('logs/test1.mat')
+bikeSim.save('logs/test2')

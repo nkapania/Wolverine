@@ -6,6 +6,8 @@ import paths
 import scipy.io as sio
 from control import *
 import time
+import os.path
+from datetime import datetime
 
 #Defines a simulation class and a state class
 
@@ -155,7 +157,14 @@ class Simulation:
 
 
     def save(self, filename):
+
+        #do not overwrite if path exists
+        if os.path.isfile(filename+".mat"):
+            print("Warning - filename already found - appending time to filename")
+            filename = filename + "_" + str(datetime.now().strftime('%M:%S.%f')[:-4])
+        
         sio.savemat(filename, self.logFile)
+
         print("Simulation results saved to " + filename)
 
 
