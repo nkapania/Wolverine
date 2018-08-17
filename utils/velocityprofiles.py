@@ -2,210 +2,221 @@ import numpy as np
 import matplotlib.pyplot as plt
 #Defines a velocity profile class
 
-#currently just uses Shelley values
-class VelocityProfile:
-	def __init__(self, profileType):
-		self.type = profileType
-		self.s = np.array([[0]])
-		self.Ux = np.array([[0]]) 
-		self.Ax = np.array([[0]])
 
+#This speed profile generation algorithm is based on a simple "3 pass" method that accounts for steady state speeds
+#and integration according to a friction circle. It is best used for educational purposes or for very simple lanekeeping
+#demonstrations well below the limits. It tends to cause instability in braking regions due to improper handling of weight
+#transfer and generally aggressive braking in the straight segments. 
 
-	def generate(self, vehicle, path, friction = 0.3, vMax = 10):
-		if self.type is "racing":
-			if path.isOpen:
-				self.s, self.Ax, self.Ux = generateRacingProfileOpen(vehicle, path, friction, vMax)
-			else:
-				self.s, self.Ax, self.Ux = generateRacingProfileClosed(vehicle, path, friction, vMax)
+class BasicProfile():
+    def __init__(self, vehicle, path, friction = 0.3, vMax = 10.):
+		self.vehicle = vehicle
+		self.path = path
+		self.mu = friction
+		self.vMax = vMax
 
-		if self.type is "racingSubosits":
-			self.s, self.Ax, self.ux = generateRacingProfileSubosits(vehicle, path, friction, vMax)
-
+	    #initialize variables
+		self.s = path.s
+		self.Ux = np.zeros(self.s.shape)
+		self.Ax = np.zeros(self.s.shape)
+	    
+		if path.isOpen:
+			self.generateBasicProfileOpen()
 
 		else:
-			print("Error")
+			self.generateBasicProfileClosed()
+
+    def generateBasicProfileClosed(self):
+	    g = 9.81
+	    K = self.path.curvature
+	    s = self.s
+	    AyMax = self.mu* g
+
+	    #calculate lowest velocity point
+	    UxSS = np.sqrt ( np.divide(AyMax, np.abs(K + 1e-8) ) )
+	    minUx = np.amin(UxSS)
+	    idx = np.argmin(UxSS)
+
+	    #shift so we generate starting at lowest point
+	    inds = np.arange(len(UxSS))
+	    shiftedInds = np.roll(inds, -idx)
+	    kShifted = K[shiftedInds]
+
+	    UxShift, AxShift = self.genSpeed(minUx)
+
+	    #unshift back to original
+	    self.Ux = np.roll(UxShift, idx)
+	    self.Ax = np.roll(AxShift, idx)
+
+	    return
+
+    def generateBasicProfileOpen(self):
+		self.Ux, self.Ax = self.genSpeed(minUx = 0) #minimum velocity is zero
+
+    def genSpeed(self, minUx):
+	    #Extract Peformance Limits and parameters
+	    g = 9.81
+	    AxMax = self.mu * g
+	    AyMax = self.mu * g
+	    K = self.path.curvature
+	    maxUx = self.vMax
+	    s = self.s
+	    
+	    numSteps = s.size
+	    
+	    #Pre-allocate three velocity profiles (steady state, braking, decel)
+	    UxInit1 = np.zeros(numSteps)
+	    UxInit2 = np.zeros(numSteps); UxInit2[0]  = minUx
+	    UxInit3 = np.zeros(numSteps); UxInit3[-1] = minUx 
+
+	    #Pre-allocate Ax and Ay
+	    ax = np.zeros(numSteps)
+	    ay = np.zeros(numSteps)
+
+
+	    #Desired velocity should meet lateral acceleration requirement
+	    UxInit1 = np.sqrt ( np.divide(AyMax, np.abs(K + 1e-8) ) )
+
+	    # #Integrate forward to find acceleration limit
+	    for i in range(UxInit2.size-1):
+	         temp = np.sqrt( UxInit2[i]**2 + 2*AxMax*(s[i+1] - s[i]))
+	        
+	         if temp > maxUx:
+	             temp = maxUx
+
+	         if temp > UxInit1[i+1]:
+	             temp = UxInit1[i+1]
+
+	         UxInit2[i+1] = temp
+
+	    #Moving rearward, integrate backwards
+	    for i in reversed(range(1,UxInit3.size)):
+	        temp = np.sqrt( UxInit3[i]**2 + 2* AxMax * (s[i] - s[i-1]) )
+	        
+
+	        if temp > UxInit2[i-1]:
+	            temp = UxInit2[i-1]
+
+	        UxInit3[i-1] = temp
 
 
 
-#Uses Subosits and Mick's racing controller accounting for bank and grade, brake factor, weight transfer. 
-def generateRacingProfileSubosits(vehicle, path, friction, vMax, jerkLimit = 800, ds = 0.5):
-	#Jerk limit in 800 m/s^3, how fast car an come off the brakes
-	topoData = np.zeros((2,7))
-	topData[1,0] = path.s[-1] #just create dummy data - no need to simulate bank and grade here
+	    #calculate acceleration profile from physics
+	    ax = np.divide( (np.roll(UxInit3,1)**2 - UxInit3**2) , (2 * (np.roll(s,1) - s) ) )
+	    ax[0] = ax[1] #avoid bug where vehicle starts with initial desired acceleration
+	    
+
+	    return UxInit3, ax
+
+class RacingProfile():
+    def __init__(self, vehicle, path, friction, vMax):
+        self.vehicle = vehicle
+        self.path = path
+        self.mu = friction
+        self.vMax = vMax
+
+        #initialize variables
+        self.s = path.s
+        self.Ux = np.zeros(self.s.shape)
+        self.Ax = np.zeros(self.s.shape)
+        
+        self.findSpeedProfile()
+        
+        return self.s, self.Ax, self.Ux
 
 
-	s, Fv2, G, Mv2, Mvdot, theta = makePath3D(path, topodata, vehicle, ds)
+    def findSpeedProfile(self):
+        n = len(self.s)
+        UxInit1 = np.zeros(self.s.shape) #for constant steady state speed
+        UxInit2 = np.zeros(self.s.shape) #for integrating forwards
+        UxInit3 = np.zeros(self.s.shape) #for integrating backwards - final velocity profile
+        self.Ax = np.zeros(self.s.shape)
+
+        #find velocity minimum based on pointwise friction constraint
+        UxInit1 = self.getSteadyStateVelocity()
+
+        #integrate forward and take the minimum
+        UxInit2 = self.integrateBackward(UxInit1)
+
+        #integrate backwards and take the minimum
+        self.integrateForward(UxInit2)
+
+        return
+
+    def integrateBackward(self, UxInit1):
+        return
+        
+    def integrateForward(self, UxInit2):
+        return
+
+    def getSteadyStateVelocity(self):
+        a = self.vehicle.a
+        b = self.vehicle.b
+        L = a + b
+        m = self.vehicle.m
+        D = self.vehicle.D
+        hcg = self.vehicle.h
+        beta = self.vehicle.beta #ratio of front to rear wheel torques
+        K = self.path.curvature
+        s = self.s
+        g = self.vehicle.g
+        mu = self.mu
+        Iz = self.vehicle.Iz
+
+        dK  = np.divide( np.diff(K) , np.diff(s) )
+        dK  = np.insert(dK, 0, 0) #prepend zero to keep same size
+
+        ####################FRONT WHEELS################################
+
+        #Front wheels terms for Ux^2
+        g = beta*D/(1+beta)
+        h = beta*(m*g)/(1+beta)
+        d = 0. #only nonzero when considering bank, grade and vertical curvature. we are not. 
+        e = -hcg*D/L
+        f = self.vehicle.FzF #FzF
+        
+        #arrays for equation
+        c =  (b*m*K + dK * self.vehicle.Iz)/L #array
+
+        A = g**2 + np.multiply(c, c) - mu**2 * e ** 2 #array
+        B = 2 * (g*h + c*d - mu**2 * e* f)
+        C = h **2 + d**2 - mu**2 * f **2 
+
+        #use positive soln to quadratic eqn
+        VmaxF = np.divide (np.sqrt( -B + np.sqrt( B ** 2 - 4*A*C)) , 2*A )
+        nonReal = np.isnan(VmaxF)
+        noFricLim = nonReal & (A < 0) & (B<0)
+
+        VmaxF[noFricLim] = 999. #avoid setting equal to inf as this causes issues
 
 
+        ###################REAR WHEELS #######################################
+        #######################(SHOULD BE IN FUNCTION BUT IT'S OK) ###########
+        mu = mu * self.vehicle.muR / self.vehicle.muF; # encodes the steady state understeer / oversteer of the car
+        
+        g = D/(1+beta);
+        h = m*g/(1+beta);
+        c = (a*m*K - dK*Iz)/L;
+        d = 0.
+        e = hcg*D/L
+        f = self.vehicle.FzR;
 
-# Combines the two-dimensional path data with the topography data
-#to make the path 3D.
-#   mapData is the map read in according to InitMap.m, topoData is topograghy
-#   data as used in InitSpeedProfile.m, and ds is the desired spacing
-#   between computation points.  s is a vector of distances along the path
-#   that indexes the other outputs.  
+        A = g**2 + np.multiply(c, c) - mu**2 * e ** 2 #array
+        B = 2*(g*h + c*d - mu**2 * e * f)
+        C = h**2 + d**2 - mu**2 * f ** 2
 
-def makePath3D(path, topodata, vehicle, ds):
-	L = path.s[-1]
-	numPoints = floor(L / ds)
-	s = np.linspace(0, L, numPoints)
+        VmaxR = np.divide (np.sqrt( -B + np.sqrt( B ** 2 - 4*A*C)) , 2*A )
+        nonReal = np.isnan(VmaxR)
+        noFricLim = nonReal & (A < 0) & (B < 0)
 
-	#grade info wrt s
-	theta = np.interp(s, topoData[:,0], topoData[:,1])
-	dtheta_ds = np.interp(s, topoData[:,0], topoData[:,2])
-	d2theta_ds = np.interp(s, topoData[:,0], topoData[:,3]) 
+        VmaxR[noFricLim] = 999.
 
-	#bank info wrt s
-	phi = np.interp(s, topoData[:,0], topoData[:,4])
-	dphi_ds = np.interp(s, topoData[:,0], topoData[:,5])
-	d2phi_ds2 = np.interp(s, topoData[:,0], topoData[:,6])
+        Ux = np.minimum(VmaxF, VmaxR)
 
-	#heading info wrt s
-	psi = np.interp(s, path.s, path.roadPsi)
-	dpsi_ds = np.interp(s, path.s, path.K)
-	dpsi_ds2 = np.divide( np.diff(dpsi_ds) , np.diff(s) )
-	dpsi_ds2 = np.insert(dpsi_ds2, 0, 0) #prepend zero to keep same size
-
-	#find coefficients for the forces
-	Fv2, G = _calcderivatives(psi, theta, phi, dpsi_ds, dtheta_ds)
-
-	#find coefficients for the moments
-	Ib = np.diag( np.array([0.1 * veh.*Iz 0.8*veh.Iz veh.Iz]) )
-	[Mv2, Mvdot] = _rotaryderivatives(Ib, theta, phi, dpsi_ds, dtheta_ds, dphi_ds, d2psi_ds2, d2theta_ds2, d2phi_ds2)
-
-	return s, Fv2, G, Mv2, Mvdot, theta
-
-
-
-
-    # %CalcDerivatives returns vectors for acclerations in the body frame
-    # %   Fv2 is the pointwise acceleration from curvature. Fvdot is the
-    # %   acceleration from gas/brake and is [1;0;0] in every column.  G is the
-    # %   direction of gravity in the body frame (positive down).  
-
-
-def _calcderivatives(psi, theta, phi, dpsi, dtheta):
-	N = len(psi)
-
-	#path derivatives
-	dx = np.dot (np.cos(theta) , np.cos(psi) )
-	dy = np.dot (np.cos(theta) , np.sin(psi) )
-	dz = -np.sin(theta)
-
-    dx2_ds2 = - np.multiply( np.sin(theta), np.cos(theta), np.cos(psi), np.dtheta_dsigma)  - np.multiply(np.cos(theta), np.cos(theta) , np.sin(psi), dpsi)
-    dy2_ds2 =   np.multiply( np.cos(theta), np.cos(theta), np.cos(psi), dpsi_dsigma     )  - np.multiply(np.sin(theta), np.cos(theta) , np.sin(psi), dtheta);
-    dz2_ds2 = - np.multiply(np.cos(theta), np.cos(theta), dtheta_dsigma)
-
-    #initialize output variables
-    Fv2 = np.zeros(3, N)
-    G = zeros(3, N)
-
-    #define transformation matrix M_BI
-
-    for i in range(n):
-    	M1 = np.array([[ np.cos(psi[i]),   np.sin(psi[i]), 0]  , [-np.sin(psi[i]), np.cos(psi[i]), 0 ],  [0, 0, 1]])
-    	M2 = np.array  (  [[np.cos(theta[i]) , 0 , -sin(theta[i])]  , [0, 1, 0], [np.sin(theta[i]), 0, np.cos(theta[i]) ]] ) 
-    	MB2 = np.array (  [[1, 0, 0]  , [0, np.cos(phi[i]), np.sin(phi[i]) ],[ 0, -sin(phi[i]), cos(phi[i])] ])
-    	
-    	MBI  = np.matmul ( np.matmul ( MB2, M2) , M1)
-
-    	Fv2[:,i] = np.dot(MBI , np.array([[dx2[i]],[dy2[i]],[dz2[i]]]) 
-    	G[:,i]   - np.dot(MBI , np.array([0],[0],[9.81]))
-
-    	return Fv2, G
-
-
-
-
-
-
-
-
-
-
-
-def generateRacingProfileOpen(vehicle, path, friction, vMax):
-	Ux, Ax = _genSpeedHelper(path.s, path.curvature, friction, 0, vMax) #minimum velocity is zero
-	return path.s, Ax, Ux
-
-
-def generateRacingProfileClosed(vehicle, path, friction, vMax):
-	g = 9.81
-	K = path.curvature
-	s = path.s
-	AyMax = friction * g
-
-
-	#calculate lowest velocity point
-	UxSS = np.sqrt ( np.divide(AyMax, np.abs(K + 1e-8) ) )
-	minUx = np.amin(UxSS)
-	idx = np.argmin(UxSS)
-
-	#shift so we generate starting at lowest point
-	inds = np.arange(len(UxSS))
-	shiftedInds = np.roll(inds, -idx)
-	kShifted = K[shiftedInds]
-
-	UxShift, AxShift = _genSpeedHelper(s, kShifted, friction, minUx, vMax)
-
-	#unshift back to original
-	Ux = np.roll(UxShift, idx)
-	Ax = np.roll(AxShift, idx)
-
-	return s, Ax, Ux
-
-
-def _genSpeedHelper(s, K, friction, minUx, maxUx):
-	#Extract Peformance Limits and parameters
-	g = 9.81
-	AxMax = friction * g
-	AyMax = friction * g
-	
-	numSteps = s.size
-	
-	#Pre-allocate three velocity profiles (steady state, braking, decel)
-	UxInit1 = np.zeros(numSteps)
-	UxInit2 = np.zeros(numSteps); UxInit2[0]  = minUx
-	UxInit3 = np.zeros(numSteps); UxInit3[-1] = minUx 
-
-	#Pre-allocate Ax and Ay
-	ax = np.zeros(numSteps)
-	ay = np.zeros(numSteps)
-
-
-	#Desired velocity should meet lateral acceleration requirement
-	UxInit1 = np.sqrt ( np.divide(AyMax, np.abs(K + 1e-8) ) )
-
-	# #Integrate forward to find acceleration limit
-	for i in range(UxInit2.size-1):
-	 	temp = np.sqrt( UxInit2[i]**2 + 2*AxMax*(s[i+1] - s[i]))
-		
-	 	if temp > maxUx:
-	 		temp = maxUx
-
-	 	if temp > UxInit1[i+1]:
-	 		temp = UxInit1[i+1]
-
-	 	UxInit2[i+1] = temp
-
-	#Moving rearward, integrate backwards
-	for i in reversed(range(1,UxInit3.size)):
-		temp = np.sqrt( UxInit3[i]**2 + 2* AxMax * (s[i] - s[i-1]) )
-		
-
-		if temp > UxInit2[i-1]:
-			temp = UxInit2[i-1]
-
-		UxInit3[i-1] = temp
+        return Ux
 
 
 
-	#calculate acceleration profile from physics
-	ax = np.divide( (np.roll(UxInit3,1)**2 - UxInit3**2) , (2 * (np.roll(s,1) - s) ) )
-	ax[0] = ax[1] #avoid bug where vehicle starts with initial desired acceleration
-	
-
-	return UxInit3, ax
 
 
 

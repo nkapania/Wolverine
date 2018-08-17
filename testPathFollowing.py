@@ -14,8 +14,7 @@ track = Path()
 track.loadFromMAT("maps/THrace.mat")
 
 # Create speed profile
-speedProfile = VelocityProfile("racing")
-speedProfile.generate(shelley, track, friction = 1.0, vMax = 99)
+speedProfile = BasicProfile(shelley, track, friction = 1.0, vMax = 99)
 
 # #Create controller object - use lanekeeping
 controller = LaneKeepingController(track, shelley, speedProfile)

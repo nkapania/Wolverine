@@ -4,52 +4,55 @@ import tiremodels as tm
 
 #Defaults to shelley variables
 class Vehicle:
-	def __init__(self, vehicleName = "shelley"): 
+    def __init__(self, vehicleName = "shelley"): 
 
-		if vehicleName is "shelley":
-			
-			self.a = 1.0441 #CG to front wheelbase [m]
-			self.b = 1.4248 #CG to rear wheelbase [m] 
-			self.d = 1.50   #vehicle width, meters (used for plotting only)
-			self.rW = 0.34 #wheel radius, meters (used for plotting only)
-			self.m = 1512.4 #vehicle mass (kg)
-			self.Cf = 160000.0 #vehicle cornering stiffness (N)
-			self.Cr = 180000.0 #vehicle cornering stiffness (N)
-			self.Iz  = 2.25E3  #vehicle inertia (kg  m^2)
-			self.muF = 1.05     #front friction coeff
-			self.muR = 1.05    #rear friction coeff
-			self.g = 9.81      #m/s^2, accel due to gravity
-			self.L = self.a + self.b #total vehicle length, m
-			self.FzF = self.m*self.b*self.g/self.L   #Maximum force on front vehicles
-			self.FzR = self.m*self.a*self.g/self.L   #Maximium force on rear vehicles
-			self.D = 0.3638 #Drag coefficient
-			self.h = 0.55   #Distance from the ground
-			self.brakeTimeDelay = 0.25 #Seconds
-			self.rollResistance = 255.0 #Newtons
-			self.powerLimit = 160000.0 #Watts
-			self.dragCoeff = 0.3638 #N / (m/s)^2
-			self.deltaLim = 27. * np.pi / 180  #Steering limit, radians
+        if vehicleName is "shelley":
+            
+            self.a = 1.0441 #CG to front wheelbase [m]
+            self.b = 1.4248 #CG to rear wheelbase [m] 
+            self.d = 1.50   #vehicle width, meters (used for plotting only)
+            self.rW = 0.34 #wheel radius, meters (used for plotting only)
+            self.m = 1512.4 #vehicle mass (kg)
+            self.Cf = 160000.0 #vehicle cornering stiffness (N)
+            self.Cr = 180000.0 #vehicle cornering stiffness (N)
+            self.Iz  = 2.25E3  #vehicle inertia (kg  m^2)
+            self.muF = 1.05     #front friction coeff
+            self.muR = 1.05    #rear friction coeff
+            self.g = 9.81      #m/s^2, accel due to gravity
+            self.L = self.a + self.b #total vehicle length, m
+            self.FzF = self.m*self.b*self.g/self.L   #Maximum force on front vehicles
+            self.FzR = self.m*self.a*self.g/self.L   #Maximium force on rear vehicles
+            self.D = 0.3638 #Drag coefficient
+            self.h = 0.55   #Distance from the ground
+            self.brakeTimeDelay = 0.25 #Seconds
+            self.rollResistance = 255.0 #Newtons
+            self.powerLimit = 160000.0 #Watts
+            self.dragCoeff = 0.3638 #N / (m/s)^2
+            self.deltaLim = 27. * np.pi / 180  #Steering limit, radians
+            self.beta = 2.0 #ratio of front to wheel rear torque - used currently for vp gen
 
-		##NOTE: Need to fill in with genesis parameters!!!!!!
-		elif vehicleName is "genesis":
+        ##NOTE: Need to fill in with genesis parameters!!!!!!
+        elif vehicleName is "genesis":
 
-			self.a = 1.0441 #CG to front wheelbase [m]
-			self.b = 1.4248 #CG to rear wheelbase [m] 
-			self.m = 1512.4 #vehicle mass (kg)
-			self.Cf = 160000.0 #vehicle cornering stiffness (N)
-			self.Cr = 180000.0 #vehicle cornering stiffness (N)
-			self.Iz  = 2.25E3  #vehicle inertia (kg  m^2)
-			self.muF = 0.97     #front friction coeff
-			self.muR = 1.02    #rear friction coeff
-			self.g = 9.81      #m/s^2, accel due to gravity
-			self.L = self.a + self.b #total vehicle length, m
-			self.FzF = self.m*self.b*self.g/self.L   #Maximum force on front vehicles
-			self.FzR = self.m*self.a*self.g/self.L   #Maximium force on rear vehicles
-			self.D = 0.3638 #Drag coefficient
-			self.h = 0.75   #Distance from the ground
-			self.brakeTimeDelay = 0.25 #Seconds
-			self.rollResistance = 255.0 #Newtons
-			self.powerLimit = 160000.0 #Watts
-			self.dragCoeff = 0.3638 #N / (m/s)^2
-			self.deltaLim = 27. * np.pi / 180  #Steering limit, radians
+            self.a = 1.0441 #CG to front wheelbase [m]
+            self.b = 1.4248 #CG to rear wheelbase [m] 
+            self.m = 1512.4 #vehicle mass (kg)
+            self.Cf = 160000.0 #vehicle cornering stiffness (N)
+            self.Cr = 180000.0 #vehicle cornering stiffness (N)
+            self.Iz  = 2.25E3  #vehicle inertia (kg  m^2)
+            self.muF = 0.97     #front friction coeff
+            self.muR = 1.02    #rear friction coeff
+            self.g = 9.81      #m/s^2, accel due to gravity
+            self.L = self.a + self.b #total vehicle length, m
+            self.FzF = self.m*self.b*self.g/self.L   #Maximum force on front vehicles
+            self.FzR = self.m*self.a*self.g/self.L   #Maximium force on rear vehicles
+            self.D = 0.3638 #Drag coefficient
+            self.h = 0.75   #Distance from the ground
+            self.brakeTimeDelay = 0.25 #Seconds
+            self.rollResistance = 255.0 #Newtons
+            self.powerLimit = 160000.0 #Watts
+            self.dragCoeff = 0.3638 #N / (m/s)^2
+            self.deltaLim = 27. * np.pi / 180  #Steering limit, radians
 
+        else:
+            sys.exit("invalid vehicle specified")
