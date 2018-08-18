@@ -14,7 +14,7 @@ track = Path()
 track.loadFromMAT("maps/THrace.mat")
 
 # Create speed profile
-speedProfile = BasicProfile(shelley, track, friction = 1.0, vMax = 99)
+speedProfile = BasicProfile(shelley, track, friction = 0.8, vMax = 99)
 
 # #Create controller object - use lanekeeping
 controller = LaneKeepingController(track, shelley, speedProfile)
@@ -24,7 +24,7 @@ bikeSim = Simulation(shelley, controller, path = track, profile = speedProfile, 
 logFile = bikeSim.simulate()
 
 #analyze results
-#bikeSim.plotResults()
+bikeSim.plotResults()
 
 # #animate car
 # anim = MyAnimation(logFile, track, shelley, timeStep = bikeSim.ts, interval = 5)
@@ -32,4 +32,4 @@ logFile = bikeSim.simulate()
 
 
 #write to .mat file
-bikeSim.save('logs/test2')
+#bikeSim.save('logs/test2')

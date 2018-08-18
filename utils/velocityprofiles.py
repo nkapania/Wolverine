@@ -42,7 +42,7 @@ class BasicProfile():
 	    shiftedInds = np.roll(inds, -idx)
 	    kShifted = K[shiftedInds]
 
-	    UxShift, AxShift = self.genSpeed(minUx)
+	    UxShift, AxShift = self.genSpeed(kShifted, minUx)
 
 	    #unshift back to original
 	    self.Ux = np.roll(UxShift, idx)
@@ -51,14 +51,14 @@ class BasicProfile():
 	    return
 
     def generateBasicProfileOpen(self):
-		self.Ux, self.Ax = self.genSpeed(minUx = 0) #minimum velocity is zero
+    	K = self.path.curvature
+    	self.Ux, self.Ax = self.genSpeed(K, minUx = 0) #minimum velocity is zero
 
-    def genSpeed(self, minUx):
+    def genSpeed(self, K, minUx):
 	    #Extract Peformance Limits and parameters
 	    g = 9.81
 	    AxMax = self.mu * g
 	    AyMax = self.mu * g
-	    K = self.path.curvature
 	    maxUx = self.vMax
 	    s = self.s
 	    
