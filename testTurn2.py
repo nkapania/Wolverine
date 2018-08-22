@@ -11,12 +11,12 @@ shelley = Vehicle(vehicleName = "shelley")
 
 #Create path object
 track = Path()
-track.loadFromMAT("maps/THrace.mat")
+track.loadFromMAT("maps/cpgSmooth.mat")
 
-track.isOpen = 1
+track.isOpen = 0
 
 # Create speed profile
-speedProfile = BasicProfile(shelley, track, friction = 0.9, vMax = 99)
+speedProfile = BasicProfile(shelley, track, friction = 0.3, vMax = 99)
 
 plt.plot(speedProfile.s, speedProfile.Ux)
 plt.show()

@@ -1,6 +1,17 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import scipy.io as sio
 #Defines a velocity profile class
+
+class RecordedProfile():
+	def __init__(self, matFileName):
+		mfile = sio.loadmat(matFileName)
+		self.s =  mfile["s"]
+		self.Ux = mfile["Ux"]
+		try:
+			self.Ax = mfile["Ax"]
+		except:
+			self.Ax = np.zeros(self.s.shape)
 
 
 #This speed profile generation algorithm is based on a simple "3 pass" method that accounts for steady state speeds

@@ -7,27 +7,27 @@ from utils.paths import *
 from utils.control import *
 
 #Create vehicle object
-shelley = Vehicle(vehicleName = "shelley")
+veh = Vehicle(vehicleName = "genesis")
 
 #Create path object
 track = Path()
-track.loadFromMAT("maps/THrace.mat")
+track.loadFromMAT("maps/cpgSmooth.mat")
 
 # Create speed profile
-speedProfile = BasicProfile(shelley, track, friction = 0.8, vMax = 99)
+speedProfile = BasicProfile(veh, track, friction = 0.5, vMax = 99)
 
 # #Create controller object - use lanekeeping
-controller = LaneKeepingController(track, shelley, speedProfile)
+controller = LaneKeepingController(track, veh, speedProfile)
 
 #simulate
-bikeSim = Simulation(shelley, controller, path = track, profile = speedProfile, mapMatchType = "closest", weightTransferType = None, tires = "fiala", maxTime = 20.) 
+bikeSim = Simulation(veh, controller, path = track, profile = speedProfile, mapMatchType = "closest") 
 logFile = bikeSim.simulate()
 
 #analyze results
 bikeSim.plotResults()
 
 # #animate car
-# anim = MyAnimation(logFile, track, shelley, timeStep = bikeSim.ts, interval = 5)
+# anim = MyAnimation(logFile, track, veh, timeStep = bikeSim.ts, interval = 5)
 # anim.run()
 
 
