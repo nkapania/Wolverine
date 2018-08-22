@@ -13,13 +13,23 @@ shelley = Vehicle(vehicleName = "shelley")
 track = Path()
 track.loadFromMAT("maps/cpgSmooth.mat")
 
-track.isOpen = 0
+track.isOpen = 1
 
 # Create speed profile
-speedProfile = BasicProfile(shelley, track, friction = 0.3, vMax = 99)
+speedProfile1 = BasicProfile(shelley, track, friction = 0.5, vMax = 30)
+speedProfile2 = BasicProfile(shelley, track, friction = 0.5, vMax = 30, AxMax = 2.0)
 
-plt.plot(speedProfile.s, speedProfile.Ux)
+
+plt.figure()
+plt.subplot(2, 1, 1)
+plt.plot(speedProfile1.s, speedProfile1.Ux)
+plt.plot(speedProfile2.s, speedProfile2.Ux)
+
+plt.subplot(2, 1, 2)
+plt.plot(speedProfile1.s, speedProfile1.Ax)
+plt.plot(speedProfile2.s, speedProfile2.Ax)
 plt.show()
+
 
 #
 ## #Create controller object - use lanekeeping
