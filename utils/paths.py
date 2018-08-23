@@ -15,7 +15,9 @@ class Path:
 		self.s = [0]
 		self.isOpen = True #open = whether track forms loop or not
 		self.referencePoint =np.zeros((3,1)) #GPS reference point
-		self.refPointName = "none" #name of reference point
+		self.refPointName = None #name of reference point
+		self.friction = None  #initialize to none
+		self.vMax = None
 
 	#loads map from csv file - CRUDE
 	def loadFromCSV(self, pathName):
@@ -36,6 +38,14 @@ class Path:
 		self.roadPsi = path['world']['roadPsi'].sum()
 		self.roadIC = path['world']['road_IC'].sum()
 		self.isOpen = bool(path['world']['isOpen'].sum())
+		try:
+			self.vMax = path['world']['vMax'].sum()
+		except:
+			self.vMax = None
+		try:
+			self.friction = path['world']['friction'].sum()
+		except:
+			self.friction = None
 
 
 

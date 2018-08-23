@@ -11,23 +11,30 @@ shelley = Vehicle(vehicleName = "shelley")
 
 #Create path object
 track = Path()
-track.loadFromMAT("maps/cpgSmooth.mat")
+track.loadFromMAT("maps/cpgSmoothModifiedFriction.mat")
 
-track.isOpen = 1
+#track.isOpen = 1
 
 # Create speed profile
-speedProfile1 = BasicProfile(shelley, track, friction = 0.5, vMax = 30)
-speedProfile2 = BasicProfile(shelley, track, friction = 0.5, vMax = 30, AxMax = 2.0)
 
+
+speedProfile1 = BasicProfile(shelley, track, friction = 0.5, vMax = 20, AxMax = 2.0)
+speedProfile2 = BasicProfile(shelley, track, track.friction, track.vMax, AxMax = 2.0)
 
 plt.figure()
-plt.subplot(2, 1, 1)
+plt.subplot(4, 1, 1)
 plt.plot(speedProfile1.s, speedProfile1.Ux)
 plt.plot(speedProfile2.s, speedProfile2.Ux)
 
-plt.subplot(2, 1, 2)
+plt.subplot(4, 1, 2)
 plt.plot(speedProfile1.s, speedProfile1.Ax)
 plt.plot(speedProfile2.s, speedProfile2.Ax)
+
+plt.subplot(4,1,3)
+plt.plot(track.s, track.friction)
+
+plt.subplot(4, 1, 4)
+plt.plot(track.s, track.vMax)
 plt.show()
 
 
