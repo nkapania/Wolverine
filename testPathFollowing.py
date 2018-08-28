@@ -11,10 +11,10 @@ veh = Vehicle(vehicleName = "genesis")
 
 #Create path object
 track = Path()
-track.loadFromMAT("maps/cpgSmooth.mat")
+track.loadFromMAT("maps/cpgSmoothModifiedFriction.mat")
 
 # Create speed profile
-speedProfile = BasicProfile(veh, track, friction = 0.5, vMax = 99)
+speedProfile = BasicProfile(veh, track, track.friction, track.vMax, AxMax = 2.0)
 
 # #Create controller object - use lanekeeping
 controller = LaneKeepingController(track, veh, speedProfile)
