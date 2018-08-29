@@ -17,6 +17,7 @@ track.loadFromMAT("maps/THrace.mat")
 speedProfile = BasicProfile(veh, track, friction = 0.9, vMax = 99)
 
 # #Create controller object - use lanekeeping
+#controller = NeuralNetFeedforward(track, veh, speedProfile)
 controller = LaneKeepingController(track, veh, speedProfile)
 
 #simulate
