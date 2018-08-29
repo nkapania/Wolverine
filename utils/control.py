@@ -37,11 +37,39 @@ class LaneKeepingController():
         self.alphaRtable = np.flip(alphaRtable, 0)
         self.FyFtable = np.flip(FyFtable, 0) 
         self.FyRtable = np.flip(FyRtable, 0)
-        
 
+    def getDeltaFFW(self, localState, K):
+        a = self.vehicle.a
+        b = self.vehicle.b
+        L = self.vehicle.L
+        m = self.vehicle.m
+        Ux = localState.Ux
+
+
+        FyFdes = b / L * m * Ux**2 * K
+        FyRdes = a / b * FyFdes
+
+        alphaFdes = _force2alpha(self.FyFtable, self.alphaFtable, FyFdes)
+        alphaRdes = _force2alpha(self.FyRtable, self.alphaRtable, FyRdes)
+
+        betaFFW = alphaRdes + b * K 
+        deltaFFW = K * L + alphaRdes - alphaFdes
+
+        return deltaFFW, betaFFW, FyFdes, FyRdes, alphaFdes, alphaRdes  
+        
+    def lanekeeping(self, localState):
+        #note - interp requires rank 0 arrays
+        sTable = self.path.s
+        kTable = self.path.curvature
+
+        K = np.interp(localState.s, sTable, kTable) #run interp every time - this is slow, but we may be able to get away with    
+        deltaFFW, betaFFW, FyFdes, FyRdes, alphaFdes, alphaRdes = self.getDeltaFFW(localState, K)
+        deltaFB = _getDeltaFB(self, localState, betaFFW)
+        delta = deltaFFW + deltaFB
+        return delta, deltaFFW, deltaFB, K, alphaFdes, alphaRdes, betaFFW
 
     def updateInput(self, localState, controlInput):
-        delta, deltaFFW, deltaFB, K, alphaFdes, alphaRdes, betaFFW = _lanekeeping(self, localState)
+        delta, deltaFFW, deltaFB, K, alphaFdes, alphaRdes, betaFFW = self.lanekeeping(localState)
         Fx, UxDes, AxDes, FxFFW, FxFB = _speedTracking(self, localState)
         controlInput.update(delta, Fx)
         auxVars = {'K': K , 'UxDes': UxDes, 'AxDes': AxDes, 'alphaFdes': alphaFdes,
@@ -141,33 +169,6 @@ def _force2alpha(forceTable, alphaTable, Fdes):
         return alpha
 
 
-def _lanekeeping(sim,localState):
-    
-    #note - interp requires rank 0 arrays
-    sTable = sim.path.s
-    kTable = sim.path.curvature
-
-    K = np.interp(localState.s, sTable, kTable) #run interp every time - this is slow, but we may be able to get away with    
-    deltaFFW, betaFFW, FyFdes, FyRdes, alphaFdes, alphaRdes = _getDeltaFFW(sim, localState, K)
-    deltaFB = _getDeltaFB(sim, localState, betaFFW)
-    delta = deltaFFW + deltaFB
-    return delta, deltaFFW, deltaFB, K, alphaFdes, alphaRdes, betaFFW
-
-
-def _lanekeepingNN(sim,localState):
-    
-    #note - interp requires rank 0 arrays
-    sTable = sim.path.s
-    kTable = sim.path.curvature
-
-    K = np.interp(localState.s, sTable, kTable) #run interp every time - this is slow, but we may be able to get away with    
-    deltaFFW, betaFFW, FyFdes, FyRdes, alphaFdes, alphaRdes = _getDeltaFFW_NN(sim, localState, K)
-    deltaFB = _getDeltaFB(sim, localState, betaFFW)
-    delta = deltaFFW + deltaFB
-    return delta, deltaFFW, deltaFB, K, alphaFdes, alphaRdes, betaFFW
-
-
-
 def _speedTracking(sim, localState):
 
     #note - interp requires rank 0 arrays
@@ -200,24 +201,7 @@ def _getDeltaFB(sim, localState, betaFFW):
     deltaFB = -kLK * (e + xLA * np.sin(deltaPsi + betaFFW))
     return deltaFB
 
-def _getDeltaFFW(sim, localState, K):
-    a = sim.vehicle.a
-    b = sim.vehicle.b
-    L = sim.vehicle.L
-    m = sim.vehicle.m
-    Ux = localState.Ux
-
-
-    FyFdes = b / L * m * Ux**2 * K
-    FyRdes = a / b * FyFdes
-
-    alphaFdes = _force2alpha(sim.FyFtable, sim.alphaFtable, FyFdes)
-    alphaRdes = _force2alpha(sim.FyRtable, sim.alphaRtable, FyRdes)
-
-    betaFFW = alphaRdes + b * K 
-    deltaFFW = K * L + alphaRdes - alphaFdes
-
-    return deltaFFW, betaFFW, FyFdes, FyRdes, alphaFdes, alphaRdes        
+      
 
 
 def _getDeltaFFW_NN(sim, localState, K):
