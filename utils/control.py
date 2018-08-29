@@ -38,6 +38,41 @@ class LaneKeepingController():
         self.FyFtable = np.flip(FyFtable, 0) 
         self.FyRtable = np.flip(FyRtable, 0)
 
+
+
+    def getDeltaFB(self, localState, betaFFW):
+        kLK = self.kLK
+        xLA = self.xLA
+        e = localState.e
+        deltaPsi = localState.deltaPsi
+
+        deltaFB = -kLK * (e + xLA * np.sin(deltaPsi + betaFFW))
+        return deltaFB
+
+
+    def speedTracking(self, localState):
+
+        #note - interp requires rank 0 arrays
+        AxTable = self.profile.Ax
+        UxTable = self.profile.Ux
+        sTable = self.profile.s
+        m = self.vehicle.m
+        fdrag = self.vehicle.dragCoeff
+        frr = self.vehicle.rollResistance
+
+        s = localState.s
+        Ux = localState.Ux
+
+        AxDes = np.interp(s, sTable, AxTable) #run interp every time - this is slow, but we may be able to get away with
+        UxDes = np.interp(s, sTable, UxTable) #run interp every time - this is slow, but we may be able to get away with
+
+
+        FxFFW = m*AxDes + np.sign(Ux)*fdrag*Ux ** 2 + frr*np.sign(Ux) # Feedforward
+        FxFB = -self.kSpeed*(Ux - UxDes) # Feedback
+        FxCommand = FxFFW + FxFB
+        return FxCommand, UxDes, AxDes, FxFFW, FxFB
+
+
     def getDeltaFFW(self, localState, K):
         a = self.vehicle.a
         b = self.vehicle.b
@@ -64,64 +99,18 @@ class LaneKeepingController():
 
         K = np.interp(localState.s, sTable, kTable) #run interp every time - this is slow, but we may be able to get away with    
         deltaFFW, betaFFW, FyFdes, FyRdes, alphaFdes, alphaRdes = self.getDeltaFFW(localState, K)
-        deltaFB = _getDeltaFB(self, localState, betaFFW)
+        deltaFB = self.getDeltaFB(localState, betaFFW)
         delta = deltaFFW + deltaFB
         return delta, deltaFFW, deltaFB, K, alphaFdes, alphaRdes, betaFFW
 
     def updateInput(self, localState, controlInput):
         delta, deltaFFW, deltaFB, K, alphaFdes, alphaRdes, betaFFW = self.lanekeeping(localState)
-        Fx, UxDes, AxDes, FxFFW, FxFB = _speedTracking(self, localState)
+        Fx, UxDes, AxDes, FxFFW, FxFB = self.speedTracking(localState)
         controlInput.update(delta, Fx)
         auxVars = {'K': K , 'UxDes': UxDes, 'AxDes': AxDes, 'alphaFdes': alphaFdes,
         'alphaRdes': alphaRdes, 'deltaFFW': deltaFFW, 'deltaFB': deltaFB, 'betaFFW': betaFFW}
 
         return auxVars
-
-
-
-class LKwithNN_feedforward():
-    def __init__(self, path, vehicle, profile):
-        self.path = path
-        self.vehicle = vehicle
-        self.profile = profile
-        self.xLA = 14.2    #lookahead distance, meters
-        self.kLK = 0.0538  #proportional gain , rad / meter
-        self.kSpeed = 3000.0 #Speed proportional gain - N / (m/s)
-        self.alphaFlim = 7.0 * np.pi / 180 #steering limits for feedforward controller
-        self.alphaRlim = 5.0 * np.pi / 180 #steering limits for feedforward controller
-        
-        #Initialize force lookup tables for feedforward
-        numTableValues = 250
-
-        #values where car is sliding
-        alphaFslide = np.abs(np.arctan(3*vehicle.muF*vehicle.m*vehicle.b/vehicle.L*vehicle.g/vehicle.Cf)) 
-        alphaRslide = np.abs(np.arctan(3*vehicle.muR*vehicle.m*vehicle.a/vehicle.L*vehicle.g/vehicle.Cr))
-
-        alphaFtable = np.linspace(-alphaFslide, alphaFslide, numTableValues)
-        alphaRtable = np.linspace(-alphaRslide, alphaRslide, numTableValues) # vector of rear alpha (rad)
-        
-        FyFtable = tm.fiala(vehicle.Cf, vehicle.muF, vehicle.muF, alphaFtable, vehicle.FzF)
-        FyRtable = tm.fiala(vehicle.Cr, vehicle.muR, vehicle.muR, alphaRtable, vehicle.FzR)
-
-        #flip arrays so Fy is increasing - important for numpy interp!!
-        self.alphaFtable = np.flip(alphaFtable, 0)
-        self.alphaRtable = np.flip(alphaRtable, 0)
-        self.FyFtable = np.flip(FyFtable, 0) 
-        self.FyRtable = np.flip(FyRtable, 0)
-        
-
-
-    def updateInput(self, localState, controlInput):
-        delta, deltaFFW, deltaFB, K, alphaFdes, alphaRdes, betaFFW = _lanekeepingNN(self, localState)
-        Fx, UxDes, AxDes, FxFFW, FxFB = _speedTracking(self, localState)
-        controlInput.update(delta, Fx)
-        auxVars = {'K': K , 'UxDes': UxDes, 'AxDes': AxDes, 'alphaFdes': alphaFdes,
-        'alphaRdes': alphaRdes, 'deltaFFW': deltaFFW, 'deltaFB': deltaFB, 'betaFFW': betaFFW}
-
-        return auxVars
-
-
-
 
 
 class OpenLoopControl():
@@ -154,6 +143,9 @@ class ControlInput:
 
 
 
+
+##################################HELPER FUNCTIONS ##############################################
+
 def _force2alpha(forceTable, alphaTable, Fdes):
         if Fdes > max(forceTable):
              Fdes = max(forceTable) - 1
@@ -168,57 +160,6 @@ def _force2alpha(forceTable, alphaTable, Fdes):
 
         return alpha
 
-
-def _speedTracking(sim, localState):
-
-    #note - interp requires rank 0 arrays
-    AxTable = sim.profile.Ax
-    UxTable = sim.profile.Ux
-    sTable = sim.profile.s
-    m = sim.vehicle.m
-    fdrag = sim.vehicle.dragCoeff
-    frr = sim.vehicle.rollResistance
-
-    s = localState.s
-    Ux = localState.Ux
-
-    AxDes = np.interp(s, sTable, AxTable) #run interp every time - this is slow, but we may be able to get away with
-    UxDes = np.interp(s, sTable, UxTable) #run interp every time - this is slow, but we may be able to get away with
-
-
-    FxFFW = m*AxDes + np.sign(Ux)*fdrag*Ux ** 2 + frr*np.sign(Ux) # Feedforward
-    FxFB = -sim.kSpeed*(Ux - UxDes) # Feedback
-    FxCommand = FxFFW + FxFB
-    return FxCommand, UxDes, AxDes, FxFFW, FxFB
-
-
-def _getDeltaFB(sim, localState, betaFFW):
-    kLK = sim.kLK
-    xLA = sim.xLA
-    e = localState.e
-    deltaPsi = localState.deltaPsi
-
-    deltaFB = -kLK * (e + xLA * np.sin(deltaPsi + betaFFW))
-    return deltaFB
-
-      
-
-
-def _getDeltaFFW_NN(sim, localState, K):
-    a = sim.vehicle.a
-    b = sim.vehicle.b
-    L = sim.vehicle.L
-    m = sim.vehicle.m
-    Ux = localState.Ux
-
-    betaFFW = 0.
-    deltaFFW = 0.
-    FyFdes = 0.
-    FyRdes = 0.
-    alphaFdes = 0.
-    alphaRdes = 0.
-
-    return deltaFFW, betaFFW, FyFdes, FyRdes, alphaFdes, alphaRdes        
 
 
 
