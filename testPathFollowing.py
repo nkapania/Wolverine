@@ -21,15 +21,15 @@ speedProfile = BasicProfile(veh, track, friction = 0.9, vMax = 99)
 controller = LaneKeepingController(track, veh, speedProfile)
 
 #simulate
-bikeSim = Simulation(veh, controller, path = track, profile = speedProfile, mapMatchType = "closest") 
+bikeSim = Simulation(veh, controller, path = track, profile = speedProfile, mapMatchType = "closest", maxTime = 15) 
 logFile = bikeSim.simulate()
 
 #analyze results
-bikeSim.plotResults()
+#bikeSim.plotResults()
 
 # #animate car
-# anim = MyAnimation(logFile, track, veh, timeStep = bikeSim.ts, interval = 5)
-# anim.run()
+anim = MyAnimation(logFile, track, veh, timeStep = bikeSim.ts, interval = 5)
+anim.run()
 
 
 #write to .mat file

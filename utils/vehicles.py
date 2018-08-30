@@ -37,7 +37,9 @@ class Vehicle:
             self.a = 1.5213 #CG to front wheelbase [m]
             self.b = 1.4987 #CG to rear wheelbase [m] 
             self.m = 2303.1 #vehicle mass (kg)
+            self.d = 1.50
             self.Cf = 200000.0 #vehicle cornering stiffness (N)
+            self.rW = 0.34 #wheel radius, meters (used for plotting only)
             self.Cr = 250000.0 #vehicle cornering stiffness (N)
             self.Iz  = 5520.  #vehicle inertia (kg  m^2)
             self.muF = 0.97     #front friction coeff

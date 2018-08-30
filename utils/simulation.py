@@ -498,6 +498,21 @@ class Logger:
         return self.data
 
 
+# class Replay:
+#     def __init__(self, logFile, controller):
+#         self.data = logFile
+#         self.controller = controller
+
+#     def simControllerOutputs():
+#         N = logFile["t"]
+#         inputs = {"deltaCmd": np.zeros((N, 1)), "FxCmd": np.zeros((N,1))}
+#         controlInput = ControlInput()
+#         localState = LocalState()
+
+#         for i in range(N):
+
+
+
 class MapMatch:
     def __init__(self, path, matchType):
         self.path = path
@@ -657,6 +672,21 @@ class MapMatch:
             self.seed = lowSind
 
             return pSE
+
+
+
+
+
+
+
+
+
+#######################################################################################################################
+####################################### HELPER FUNCTIONS ##############################################################
+#######################################################################################################################
+
+
+
 
 
 
