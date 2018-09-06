@@ -498,18 +498,34 @@ class Logger:
         return self.data
 
 
-# class Replay:
-#     def __init__(self, logFile, controller):
-#         self.data = logFile
-#         self.controller = controller
+#Plays back recorded local state and allows second controller to simulate outputs on recorded data.
+#Note - assumes controller is initialized to the same path and velocity profile as the recorded data.
+class Replay:
+    def __init__(self, logFile, controller):
+        self.data = logFile
+        self.controller = controller
 
-#     def simControllerOutputs():
-#         N = logFile["t"]
-#         inputs = {"deltaCmd": np.zeros((N, 1)), "FxCmd": np.zeros((N,1))}
-#         controlInput = ControlInput()
-#         localState = LocalState()
+    def simControllerOutputs(self):
+        N = len(self.data["t"])
+        inputs = {"deltaCmd": np.zeros((N, 1)), "FxCmd": np.zeros((N,1))}
+        controlInput = ControlInput()
+        localState = LocalState()
 
-#         for i in range(N):
+        print("Running through saved data")
+        for i in range(N):
+            Ux = self.data["Ux"][i]
+            Uy = self.data["Uy"][i]
+            r  = self.data["r" ][i]
+            e  = self.data["e" ][i]
+            deltaPsi = self.data["deltaPsi"][i]
+            s  = self.data["s"][i]
+            localState.update(Ux = Ux, Uy = Uy, r = r, e= e, deltaPsi = deltaPsi, s = s)
+
+            self.controller.updateInput(localState, controlInput)
+            inputs["deltaCmd"][i] = controlInput.delta
+            inputs["FxCmd"][i] = controlInput.Fx
+
+        return inputs
 
 
 

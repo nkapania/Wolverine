@@ -7,11 +7,12 @@ from utils.paths import *
 from utils.control import *
 
 #Create vehicle object
-veh = Vehicle(vehicleName = "genesis")
+veh = Vehicle(vehicleName = "shelley")
 
 #Create path object
 track = Path()
 track.loadFromMAT("maps/THrace.mat")
+#track.generateRandomWorld(numTurns = 10)
 
 # Create speed profile
 speedProfile = BasicProfile(veh, track, friction = 0.9, vMax = 99)
@@ -21,16 +22,16 @@ speedProfile = BasicProfile(veh, track, friction = 0.9, vMax = 99)
 controller = LaneKeepingController(track, veh, speedProfile)
 
 #simulate
-bikeSim = Simulation(veh, controller, path = track, profile = speedProfile, mapMatchType = "closest", maxTime = 15) 
+bikeSim = Simulation(veh, controller, path = track, profile = speedProfile, mapMatchType = "closest") 
 logFile = bikeSim.simulate()
 
 #analyze results
 #bikeSim.plotResults()
 
-# #animate car
-anim = MyAnimation(logFile, track, veh, timeStep = bikeSim.ts, interval = 5)
-anim.run()
+# # #animate car
+#anim = MyAnimation(logFile, track, veh, timeStep = bikeSim.ts, interval = 5)
+#anim.run()
 
 
 #write to .mat file
-#bikeSim.save('logs/test2')
+bikeSim.save('logs/mu9')

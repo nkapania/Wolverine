@@ -249,7 +249,7 @@ class NeuralNetFeedforward():
             self.input_buff[0,1]  = localState.Uy
             self.input_buff[0,2]  = localState.r
             self.input_buff[0,3]  = delta
-            self.input_buff[0,4]  = ax
+            self.input_buff[0,4]  = ax / 100
             self.input_buff[0,5]  = K
 
             self.iterCount += 1

@@ -22,7 +22,6 @@ class Vehicle:
             self.L = self.a + self.b #total vehicle length, m
             self.FzF = self.m*self.b*self.g/self.L   #Maximum force on front vehicles
             self.FzR = self.m*self.a*self.g/self.L   #Maximium force on rear vehicles
-            self.D = 0.3638 #Drag coefficient
             self.h = 0.55   #Distance from the ground
             self.brakeTimeDelay = 0.25 #Seconds
             self.rollResistance = 255.0 #Newtons
@@ -48,7 +47,6 @@ class Vehicle:
             self.L = self.a + self.b #total vehicle length, m
             self.FzF = self.m*self.b*self.g/self.L   #Maximum force on front vehicles
             self.FzR = self.m*self.a*self.g/self.L   #Maximium force on rear vehicles
-            self.D = 0.3638 #Drag coefficient
             self.h = 0.75   #Distance from the ground
             self.brakeTimeDelay = 0.25 #Seconds
             self.rollResistance = 255.0 #Newtons
@@ -56,6 +54,30 @@ class Vehicle:
             self.powerLimit = 160000.0 #Watts
             self.dragCoeff = 0.3638 #N / (m/s)^2
             self.deltaLim = 27. * np.pi / 180  #Steering limit, radians
+
+        elif vehicleName is "niki":
+
+            self.a = 1.194 #CG to front wheelbase [m]
+            self.b = 1.437 #CG to rear wheelbase [m] 
+            self.m = 1776.2 #vehicle mass (kg)
+            self.d = 1.50
+            self.Cf = 150000.0 #vehicle cornering stiffness (N)
+            self.rW = 0.34 #wheel radius, meters (used for plotting only)
+            self.Cr = 170000.0 #vehicle cornering stiffness (N)
+            self.Iz  = 2760.  #vehicle inertia (kg  m^2)
+            self.muF = 0.9     #front friction coeff
+            self.muR = 0.9    #rear friction coeff
+            self.g = 9.81      #m/s^2, accel due to gravity
+            self.L = self.a + self.b #total vehicle length, m
+            self.FzF = self.m*self.b*self.g/self.L   #Maximum force on front vehicles
+            self.FzR = self.m*self.a*self.g/self.L   #Maximium force on rear vehicles
+            self.h = 0.75   #Distance from the ground
+            self.brakeTimeDelay = 0.25 #Seconds
+            self.rollResistance = 255.0 #Newtons
+            self.powerLimit = 100.0*147*1e3 #Watts
+            self.dragCoeff = 0.3638 #N / (m/s)^2
+            self.deltaLim = 27. * np.pi / 180  #Steering limit, radians
+
 
         else:
             sys.exit("invalid vehicle specified")
