@@ -39,14 +39,33 @@ class Path:
 		self.roadPsi = path['world']['roadPsi'].sum()
 		self.roadIC = path['world']['road_IC'].sum()
 		self.isOpen = bool(path['world']['isOpen'].sum())
+		
+		#Optional fields: Max Velocity
 		try:
 			self.vMax = path['world']['vMax'].sum()
 		except:
 			self.vMax = None
+		
+		#Friction
 		try:
 			self.friction = path['world']['friction'].sum()
 		except:
 			self.friction = None
+
+		#Bank and grade
+		try:
+			self.bank = path['world']['bank'].sum()
+			print('Loaded Bank Information')
+		except:
+			self.bank = np.zeros((self.s.size, 3))
+
+		try:
+			self.grade = path['world']['grade'].sum()
+			print('Loaded Grade Information')
+		except:
+			self.grade = np.zeros((self.s.size, 3))
+
+
 
 	def genFromSK(self, prim_s, prim_k, points_per_meter = 4):
 		

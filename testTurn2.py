@@ -11,9 +11,11 @@ shelley = Vehicle(vehicleName = "shelley")
 
 #Create path object
 track = Path()
-track.loadFromMAT('maps/THrace.mat')
+track.loadFromMAT('maps/thunderhill_race.mat')
 #track.generateRandomWorld(numTurns = 10)
 
-plt.figure()
-plt.plot(track.s, track.curvature)
+rp = RacingProfile(shelley, track, friction = 0.7, vMax = 99)
+Fv2, G, Mv2, MvDot, theta = rp.makePath3D()
+
+plt.plot(theta)
 plt.show()
