@@ -94,8 +94,10 @@ class BasicProfile():
 	    
 	    #Pre-allocate three velocity profiles (steady state, braking, decel)
 	    UxInit1 = np.zeros(numSteps)
-	    UxInit2 = np.zeros(numSteps); UxInit2[0]  = minUx
-	    UxInit3 = np.zeros(numSteps); UxInit3[-1] = minUx 
+	    UxInit2 = np.zeros(numSteps) 
+	    UxInit2[0]  = minUx
+	    UxInit3 = np.zeros(numSteps) 
+	    UxInit3[-1] = minUx 
 
 	    #Pre-allocate Ax and Ay
 	    ax = np.zeros(numSteps)
@@ -164,6 +166,65 @@ class RacingProfile():
 
     	Fv2, G, Mv2, MvDot, theta = self.makePath3D()
     	self.findSpeedProfile(Fv2, G, Mv2, Mvdot, theta)
+
+    def findSpeedProfile(self,Fv2, G, Mv2, Mvdot, theta):
+    	
+    	#define variables from objects for code readability
+    	n = len(self.path.s) #number of sample points
+    	Vmax = self.vMax * np.ones(self.s.shape)
+    	mu = self.mu * np.ones(self.s.shape)
+    	AxDesired = self.Ax
+    	s = self.s
+
+
+	    # handle the open maps by limiting the final speed to zero for last 10 m
+	    if self.path.isOpen
+	        stoppedPoints = s >= (s[-1] - self.stopDistance)
+	        Vmax[stoppedPoints] = 0
+	    
+	    else # remove last point to prevent double counting/duplication
+	        # this is probably the cleanest way to do it to avoid extra logic later
+	        endPoint = s[-1]
+	        
+	        s = s[:-1]
+	        Fv2 = Fv2[:,:-1]
+	        G = G[:,:-1]
+	        Mvdot = Mvdot[:,:-1]
+	        Mv2 = Mv2[:,:-1]
+	        theta = theta[:-1]
+	        AxDesired = AxDesired[:-1]
+	        Vmax      = Vmax[:-1]
+	        mu        = mu  [:-1]
+	    
+
+	    # find velocity max based on pointwise friction constraint
+	    algebraicVmax = calcVmax(0, self.vehicle, mu, Fv2, G, Mv2[1:,:],Mvdot[1:,:])
+	    UxDesired = min(Vmax, algebraicVmax)    #target speed
+	    
+	    s,UxDesired,AxDesired,AxMax = self.generateSpeedProfile(UxDesired,AxDesired,veh,mu,s,Fv2,G,Mv2,Mvdot,theta)
+
+	    #close the loop and ensure continuity
+	    if not path.isOpen
+	        s = np.concatenate(s, endPoint)
+	        UxDesired = np.concatenate(UxDesired, UxDesired[-1])
+	        AxDesired = np.concatenate(AxDesired, AxDesired[-1])
+	        AxMax     = np.concatenate(AxMax, AxMax[-1]) 
+
+	    else #set desired acceleration to the negitive limit so that the car stops and continues braking.
+	        AxDesired[stoppedPoints] = -mu[stoppedPoints]*self.vehicle.g
+
+
+	    self.s = s
+	    self.Ux = UxDesired
+	    self.Ax = AxDesired
+    
+    	return
+
+    def calcVmax(self, Vdot, mu, fv2, g, mv2, mvdot):
+    	return Vmax, Vdot
+
+    def generateSpeedProfile(self, UxDesired,AxDesired,veh,mu,s,Fv2,G,Mv2,Mvdot,theta):
+    	return s, UxDesired, AxDesired, AxMax
 
     def calcHeadingData(self):
 		psi = self.path.roadPsi
@@ -242,7 +303,7 @@ class RacingProfile():
 	        Mvdot[:,i] = np.dot(Ib,  np.dot(L_BI, np.array([ [dphi_ds[i]],  [dtheta_ds[i]], [dpsi_ds[i]]] ))).squeeze()	        
 	        L_BIdot = np.array( [[0, 0, -cos(theta[i])*dtheta_ds[i]] , 
 			[0, (-sin(phi[i])*dphi_ds[i]), (cos(phi[i])*cos(theta[i])*dphi_ds[i] - sin(phi[i])*sin(theta[i])*dtheta_ds[i])], 
-			[0, (-cos(phi[i])*dphi_ds[i]), (-sin(phi[i])*cos(theta[i])*dphi_ds[i] - cos(phi[i]) * sin(theta[i])*dtheta_ds[i])]]);
+			[0, (-cos(phi[i])*dphi_ds[i]), (-sin(phi[i])*cos(theta[i])*dphi_ds[i] - cos(phi[i]) * sin(theta[i])*dtheta_ds[i])]])
 
 	        V2b[:,i] = np.dot( Ib,   np.dot( L_BIdot, np.array( [ [dphi_ds[i]], [dtheta_ds[i]],  [dpsi_ds[i] ]] ))).squeeze()
 	    
