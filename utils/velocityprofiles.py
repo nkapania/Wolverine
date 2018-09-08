@@ -18,7 +18,7 @@ class RecordedProfile():
 
 #This speed profile generation algorithm is based on a simple "3 pass" method that accounts for steady state speeds
 #and integration according to a friction circle. It is best used for educational purposes or for very simple lanekeeping
-#demonstrations well below the limits. It tends to cause instability in braking regions due to improper handling of weight
+#demonstrations well below the limits. It ts to cause instability in braking regions due to improper handling of weight
 #transfer and generally aggressive braking in the straight segments. 
 
 class BasicProfile():
@@ -55,7 +55,7 @@ class BasicProfile():
 	    K = self.path.curvature
 	    s = self.s
 	    AyMax = self.mu* g
-	    AxMax = min( np.append(self.mu * g, abs(AxMax)))
+	    AxMax = min( np.app(self.mu * g, abs(AxMax)))
 
 	    #calculate lowest velocity point
 	    UxSS = np.sqrt ( np.divide(AyMax, np.abs(K + 1e-8) ) )
@@ -82,7 +82,7 @@ class BasicProfile():
     	g = 9.81
     	K = self.path.curvature
     	AyMax = self.mu* g
-    	AxMax = min( np.append(self.mu * g, abs(AxMax)))
+    	AxMax = min( np.app(self.mu * g, abs(AxMax)))
     	self.Ux, self.Ax = self.genSpeed(K, 0, self.vMax, AxMax, AyMax) #minimum velocity is zero
 
     def genSpeed(self, K, minUx, maxUx, AxMax, AyMax):
@@ -162,8 +162,6 @@ class RacingProfile():
 
     def getRacingProfile(self):
 
-    	#compute array of ds values
-
     	Fv2, G, Mv2, MvDot, theta = self.makePath3D()
     	self.findSpeedProfile(Fv2, G, Mv2, Mvdot, theta)
 
@@ -184,7 +182,7 @@ class RacingProfile():
 	    
 	    else # remove last point to prevent double counting/duplication
 	        # this is probably the cleanest way to do it to avoid extra logic later
-	        endPoint = s[-1]
+	        Point = s[-1]
 	        
 	        s = s[:-1]
 	        Fv2 = Fv2[:,:-1]
@@ -199,18 +197,18 @@ class RacingProfile():
 
 	    # find velocity max based on pointwise friction constraint
 	    algebraicVmax = calcVmax(0, self.vehicle, mu, Fv2, G, Mv2[1:,:],Mvdot[1:,:])
-	    UxDesired = min(Vmax, algebraicVmax)    #target speed
+	    UxDesired = np.minimum(Vmax, algebraicVmax)    #target speed
 	    
-	    s,UxDesired,AxDesired,AxMax = self.generateSpeedProfile(UxDesired,AxDesired,veh,mu,s,Fv2,G,Mv2,Mvdot,theta)
+	    s, UxDesired,AxDesired,AxMax = self.generateSpeedProfile(UxDesired,AxDesired,mu,s,Fv2,G,Mv2,Mvdot,theta)
 
 	    #close the loop and ensure continuity
 	    if not path.isOpen
-	        s = np.concatenate(s, endPoint)
+	        s = np.concatenate(s, Point)
 	        UxDesired = np.concatenate(UxDesired, UxDesired[-1])
 	        AxDesired = np.concatenate(AxDesired, AxDesired[-1])
 	        AxMax     = np.concatenate(AxMax, AxMax[-1]) 
 
-	    else #set desired acceleration to the negitive limit so that the car stops and continues braking.
+	    else #set desired acceleration to the negative limit so that the car stops and continues braking.
 	        AxDesired[stoppedPoints] = -mu[stoppedPoints]*self.vehicle.g
 
 
@@ -221,10 +219,420 @@ class RacingProfile():
     	return
 
     def calcVmax(self, Vdot, mu, fv2, g, mv2, mvdot):
+    	#define parameters
+	    a = self.vehicle.a
+	    b = self.vehicle.b
+	    L = a+b    # wheelbase, [m]
+	    m = self.vehicle.m
+	    D = self.vehicle.D
+	    hcg = self.vehicle.h 
+	    beta = self.beta   # ratio of front to rear wheel torques may need to reexamine this to decide if it needs to be different for  braking and driving
+
+	    # terms in constraint equation
+	    g1 = g[0,:]
+	    g2 = g[1,:]
+	    g3 = g[2,:]
+	    fv22 = fv2[1,:]
+	    fv23 = fv2[2,:]
+	    mv22 = mv2[0,:]
+	    mv23 = mv2[1,:]
+	    mvdot2 = mvdot[0,:]
+	    mvdot3 = mvdot[1,:]
+
+	    #front wheels find terms for V**2 equation
+	    g =  beta*D/(1 + beta)
+	    h =  beta*(m*g1 + m*Vdot)/(1+beta)
+	    c =  (b*m*fv22 + mv23)/L
+	    d =  (b*m*g2 + mvdot3*Vdot)/L
+	    e =  (m*b*fv23 - mv22 - hcg*D)/L
+	    f =  (m*b*(g3) - hcg*(m*(g1 + Vdot)) - mvdot2*Vdot )/L
+
+	    A = (g)**2 + (c)**2 - mu**2*(e)**2
+	    B = 2*((g)*(h) + (c)*(d) - mu**2*(e)*(f))
+	    C = (h)**2 + (d)**2 - mu**2*(f)**2
+
+	    VmaxFront = np.zeros(A.shape)
+	    VmaxRear  = np.zeros(B.shape)
+
+	    # use positive solution to quadratic eqn.
+	    for i in range(len(B)):
+	    	try:
+	    		VmaxFront[i] = np.sqrt((-B[i] + np.sqrt(B[i]**2 - 4*A[i]*C[i]))/(2*A[i]))
+	    	except:
+	    		VmaxFront[i] = self.vMax
+
+	    # do rear wheels
+	    mu = mu* self.vehicle.muR / self.vehicle.muF # encodes the steady state understeer of the car
+	    g = D/(1+beta)
+	    h = m*(g1+Vdot)/(1+beta)
+	    c = (a*m*fv22 - mv23)/L
+	    d = (a*m*g2 - mvdot3*Vdot)/L
+	    e = (m*a*fv23 + mv22 + hcg*D)/L
+	    f = (m*a*(g3) + hcg*m*(g1 + Vdot) + mvdot2*Vdot )/L
+
+	    A = (g)**2 + (c)**2 - mu**2*(e)**2
+	    B = 2*((g)*(h) + (c)*(d) - mu**2*(e)*(f))
+	    C = (h)**2 + (d)**2 - mu**2*(f)**2
+
+	    VmaxRear = sqrt((-B + sqrt(B**2 - 4*A*C))./(2*A))
+
+	    for i in range(len(B)):
+	    	try:
+	    		VmaxRear[i] = np.sqrt((-B[i] + np.sqrt(B[i]**2 - 4*A[i]*C[i]))/(2*A[i]))
+	    	except:
+	    		VmaxRear[i] = self.vMax
+
+
+	    Vmax = np.minimum(VmaxFront,VmaxRear)
+	    Vmax = np.minimum(Vmax,self.vMax)
+
     	return Vmax, Vdot
 
-    def generateSpeedProfile(self, UxDesired,AxDesired,veh,mu,s,Fv2,G,Mv2,Mvdot,theta):
-    	return s, UxDesired, AxDesired, AxMax
+    def generateSpeedProfile(self, speedLim, AxDesired,mu,sigma,Fv2,G,Mv2,Mvdot,theta):
+
+
+	    n = len(posDesired)
+	    # Integrate backwards from minimum speed point to find safe upper bound on
+	    # speed accounting for turning limits and deceleration limits
+
+	    IDX = np.argmin(speedLim)
+
+	    pos = IDX+1 % n
+	    
+	    if pos != 0:
+	    	step = sigma[1] - sigma[0]
+	    	muConcat = np.concatenate(mu[pos:], mu[:pos]) #circshift should really be used here
+	    	sigmaConcat = np.concatenate(sigma[pos:] sigma[:pos]) #circshift should really be used here
+
+	    	fv2Concat = np.concatenate(Fv2[:, pos:], Fv2[:,:pos]) #circshift should really be used here
+	    	gConcat =   np.concatenate(G[:,pos:], G[:,:pos]) #circshift should really be used here
+	    	mv2Concat = np.concatenate(Mv2[1:,pos:], Mv2[1:,:pos]) #circshift should really be used here
+	    	mvdotConcat =    np.concatenate( Mvdot[1:,pos:], Mvdot[1:,:pos]) #circshift should really be used here
+	    	thetaConcat =    np.concatenate( theta[pos:], theta[:pos]) #circshift should really be used here
+	    	speedLimConcat = np.concatenate( speedLim[pos:], speedLim[:pos]) #circshift should really be used here
+
+	        posDesired,UxDesired, AxDesired  = integrateBackward(step,n,speedLim[IDX],AxDesired[IDX],muConcat , sigmaConcat , fv2Concat ,gConcat ,mv2Concat, mvdotConcat ,thetaConcat, speedLimConcat)
+	    else:
+	        posDesired,UxDesired, AxDesired  = integrateBackward(step,n,speedLim[IDX],AxDesired[IDX],mu,              sigma,              Fv2,             G,             Mv2[1:,:],      Mvdot[1:,:],      theta,             speedLim)
+	    
+	    # return points to normal order
+	    I = np.argsort(posDesired)
+
+	    posDesired = posDesired[I]
+	    UxDesired = UxDesired[I]
+	    AxDesired = AxDesired[I]
+
+	    # Integrate forwards accounting for friction limits
+	    pos = IDX % n
+	    
+
+	    if pos != 0:
+	    	posConcat = np.concatenate(posDesired[pos:], posDesired[:pos])
+	    	UxConcat = np.concatenate(UxDesired[pos:], UxDesired[:pos])
+	    	AxConcat = np.concatenate(AxDesired[pos:], AxDesired[:pos])
+	    	muConcat = np.concatenate(mu[pos:], mu[:pos])
+	    	fv2Concat = np.concatenate(Fv2[:, pos:], Fv2[:,:pos]) #circshift should really be used here
+	    	gConcat =   np.concatenate(G[:,pos:], G[:,:pos]) #circshift should really be used here
+	    	mv2Concat = np.concatenate(Mv2[1:2,pos:], Mv2[1:2,:pos]) #circshift should really be used here
+	    	mvdotConcat =    np.concatenate( Mvdot[1:2,pos:], Mvdot[1:2,:pos]) #circshift should really be used here
+	    	thetaConcat =    np.concatenate( theta[pos:], theta[:pos]) #circshift should really be used here
+
+	        posDesired,UxDesired, AxDesired, AxMax = integrateForward(step,posConcat,  UxConcat,   AxConcat,  muConcat, fv2Concat,gConcat,mv2concat,mvdotConcat,thetaConcat)
+	    
+	    else:
+	        posDesired,UxDesired, AxDesired, AxMax = integrateForward(step,posDesired, UxDesired, AxDesired,  mu,       Fv2,      G,      Mv2,      Mvdot,       theta)
+	    
+
+
+	    # sort back into order from start to  of the path
+	    I = np.argsort(posDesired)
+	    posDesired = posDesired[I]
+	    UxDesired = UxDesired[I]
+	    AxDesired = AxDesired[I]
+	    AxMax = AxMax[I]
+
+    	return posDesired, UxDesired, AxDesired, AxMax
+
+    def integrateBackward(self,step, n, Speed, ax, mu, sigma, fv2, g, mv2, mvdot, theta, speedLimit):
+
+		positions = sigma  # distance along the path
+		Ux = np.zeros((1,n))    # speed [m/s]
+		Ax = np.zeros((1,n))    # acceleration [m/s**2]
+
+		Vsquared = Speed**2
+		beta = self.vehicle.beta
+
+
+		for i in range(0, n-2):
+		    Ux[n-i] = np.sqrt(Vsquared)
+		    Ax[n-i] = ax
+		    
+		    # find limits on front and rear tires and max speed
+		    axF,betaF = self.decelFront(Vsquared,g[:,n-i],fv2[:,n-i],mv2[:,n-i],mvdot[:,n-i],mu[n-i], beta)
+		    axR,betaR = self.decelRear (Vsquared,g[:,n-i],fv2[:,n-i],mv2[:,n-i],mvdot[:,n-i],mu[n-i], beta)
+		    Vmax = speedLimit[n-i-1]
+		    
+		    # take smaller magnitude and corresponding brake proportioning
+		    if axF > axR:
+		        ax = axF
+		        beta = betaF
+		    else:
+		        ax = axR
+		        beta = betaR
+		    
+		    ax = min(ax,0)
+		    
+		    # control how fast we can come off the brakes to limit understeer on
+		    # entry
+		    if (ax-Ax[n-i])/step*np.sqrt(Vsquared) < -jerkLimit:
+		        ax = -jerkLimit*step/np.sqrt(Vsquared) + Ax[n-i]
+		    
+		    
+		    # update
+		    Vsquared = Vsquared - 2*step*ax/cos(theta[n-i])
+		    if (Vsquared < 0): 
+		        Vsquared = 0
+		        ax = 0
+		    
+		    if Vsquared > Vmax**2
+		        Vsquared = Vmax**2
+		        ax = 0
+		    
+
+		Ux[0] = sqrt(Vsquared)
+		Ax[0] = ax    	
+
+    	return positions, Ux, Ax
+
+    def integrateForward(self, step, posDesired, UxDesired, AxDesired, mu, fv2, g, mv2, mvdot, theta):
+	    
+	    n = len(posDesired)
+	    Vsquared = UxDesired[0]**2
+	    AxMax = np.zeros((1,len(AxDesired))
+
+        P = self.vehicle.powerLimit # engine power, [W]
+        m = self.vehicle.m
+        D = self.vehicle.D
+        rr = self.vehicle.rollResistance
+
+
+	    for i in range(n):
+	        UxDesired[i] = np.sqrt(Vsquared)
+
+	        # find limits on front and rear tires and max speed
+	        axF, betaF = self.accelFront(Vsquared,g[:,i],fv2[:,i],mv2[:,i], mvdot[:,i],mu[i], beta)
+	        axR, betaR = self.accelRear (Vsquared,g[:,i],fv2[:,i],mv2[:,i], mvdot[:,i],mu[i], beta)
+
+	        # take smaller magnitude and corresponding torque proportioning
+	        if (axF > axR):
+	            ax = axR
+	            beta = betaR
+	        else:
+	            ax = axF
+	            beta = betaF
+	        
+
+	        AxMax[i] = ax     # save for later
+
+	        ax = min(ax,P/m/np.sqrt(Vsquared)-D*Vsquared/m -g[0,i])-rr/m
+
+	        # update and avoid royally screwing up
+	        Vsquared = Vsquared + 2*step*ax/cos(theta[i])
+
+	        if Vsquared < 0:
+	            Vsquared = 0
+	            ax = 0
+	        
+
+	        # avoid overshooting your brakepoints
+	        if i < n:
+	            if sqrt(Vsquared) > UxDesired[i+1]:
+	                Vsquared = UxDesired[i+1]**2
+	                ax = (UxDesired[i+1]**2 - UxDesired[i]**2)/(2*(posDesired[i+1] - posDesired[i]))
+	            
+	        else:
+	            if sqrt(Vsquared) > UxDesired[0]:
+	                Vsquared = UxDesired[0]**2
+	                ax = (UxDesired[0]**2 - UxDesired[i]**2)/(2*(posDesired[0] - posDesired[i]))
+
+	        AxDesired[i] = ax
+
+    	return posDesired, UxDesired, AxDesired, AxMax
+
+    def accelFront(self, Vsquared, g, fv2, mv2, mvdot, mu, beta):
+
+    	a = self.vehicle.a
+    	b = self.vehicle.b
+    	hcg = self.vehicle.h
+    	D = self.vehicle.D
+	    L = a+b
+
+	    # terms in constraint equation
+	    g1 = g[0]
+	    g2 = g[1]
+	    g3 = g[2]
+	    fv22 = fv2[1]
+	    fv23 = fv2[2]
+	    mv22 = mv2[0]
+	    mv23 = mv2[1]
+	    mvdot2 = mvdot[0]
+	    mvdot3 = mvdot[1]
+
+	    # find terms for vdot equation
+	    g = beta*m/(1 + beta)
+	    h = beta*(m*g1 + D*Vsquared)/(1+beta)
+	    c = mvdot3/L
+	    d = (b*m*(fv22*Vsquared + g2) + mv23*Vsquared)/L
+	    e = -(m*hcg + mvdot2)/L
+	    f = (m*b*(fv23*Vsquared+g3) - hcg*(m*g1 + D*Vsquared) - mv22*Vsquared)/L
+	    A = (g)**2 + (c)**2 - mu**2*(e)**2
+	    B = 2*((g)*(h) + (c)*(d) - mu**2*(e)*(f))
+	    C = (h)**2 + (d)**2 - mu**2*(f)**2
+
+
+	    # use positive solution to quadratic eqn.
+	    try:
+	    	vdot = (-B + np.sqrt(B**2 - 4*A*C))/(2*A)
+	    except:
+	        vdot = 0 # maybe this is feasible by a different torque dist.
+	    
+
+	    # find the front/rear weight distribution for brake proportioning next time
+	    Fzf = e*vdot + f
+	    Fzr = m*(fv23*Vsquared + g3) - Fzf
+	    beta = Fzf/Fzr
+	    if (beta < 1)
+	        beta = 1
+	    
+    	return vdot, beta
+
+    def accelRear(self,Vsquared, g, fv2, mv2, mvdot, beta):
+    	a = self.vehicle.a
+    	b = self.vehicle.b
+    	hcg = self.vehicle.h
+    	D = self.vehicle.D
+	    L = a+b
+
+	    # find maximum acceleration assuming back wheels limit
+	    g1 = g[0]
+	    g2 = g[1]
+	    g3 = g[2]
+	    fv22 = fv2[1]
+	    fv23 = fv2[2]
+	    mv22 = mv2[0]
+	    mv23 = mv2[1]
+	    mvdot2 = mvdot[0]
+	    mvdot3 = mvdot[1]
+
+	    g = m/(1 + beta)
+	    h = (m*g1 + D*Vsquared)/(1+beta)
+	    c = -mvdot3/L
+	    d = (a*m*(fv22*Vsquared + g2) - mv23*Vsquared)/L
+	    e = (m*hcg + mvdot2)/L
+	    f = (m*a*(fv23*Vsquared+g3) + hcg*(m*g1 + D*Vsquared) + mv22*Vsquared)/L
+	    A = (g)**2 + (c)**2 - mu**2*(e)**2
+	    B = 2*((g)*(h) + (c)*(d) - mu**2*(e)*(f))
+	    C = (h)**2 + (d)**2 - mu**2*(f)**2
+
+
+	    # use positive solution to quadratic eqn.
+	    try:
+	    	vdot = (-B + np.sqrt(B**2 - 4*A*C))/(2*A)
+	    except:
+	        vdot = 0 # maybe this is feasible by a different torque dist.
+	    
+
+	    Fzr = e*vdot + f
+	    Fzf = m*(fv23*Vsquared + g3) - Fzr
+	    beta = Fzf/Fzr
+	    if (beta < 1):
+	        beta = 1
+	    
+
+    	return vdot, beta
+
+    def decelFront(self, Vsquared, g, fv2, mv2, mvdot, mu, beta):
+    	a = self.vehicle.a
+    	b = self.vehicle.b
+    	hcg = self.vehicle.h
+    	D = self.vehicle.D
+	    L = a+b
+
+		#terms in constraint equation
+		g1 = g[0]
+		g2 = g[1]
+		g3 = g[2]
+		fv22 = fv2[1]
+		fv23 = fv2[2]
+		mv22 = mv2[0]
+		mv23 = mv2[1]
+		mvdot2 = mvdot[0]
+		mvdot3 = mvdot[1]
+
+		# find terms for vdot equation
+		g = beta*m/(1 + beta)
+		h = beta*(m*g1 + D*Vsquared)/(1+beta)
+		c = mvdot3/L
+		d = (b*m*(fv22*Vsquared + g2) + mv23*Vsquared)/L
+		e = -(m*hcg + mvdot2)/L
+		f = (m*b*(fv23*Vsquared+g3) - hcg*(m*g1 + D*Vsquared) - mv22*Vsquared)/L
+		A = (g)**2 + (c)**2 - mu**2*(e)**2
+		B = 2*((g)*(h) + (c)*(d) - mu**2*(e)*(f))
+		C = (h)**2 + (d)**2 - mu**2*(f)**2
+
+		# use negative solution to quadratic eqn.
+		vdot = (-B - sqrt(B**2 - 4*A*C))/(2*A) # * brakeFactor # scale deceleration by brakeFactor
+		if (~isreal(vdot) || (vdot > 0))
+		    vdot = -h/g   # if limits exceeded, grade and drag only
+		
+		#vdot = vdot - 255.57/m # rolling resistance
+		# find the front/rear weight distribution for brake proportioning next time
+		Fzf = e*vdot + f
+		Fzr = m*(fv23*Vsquared + g3) - Fzf
+		beta = Fzf/Fzr
+		vdot = vdot * brakeFactor    	
+
+    	return vdot, beta
+
+    def decelRear(self, Vsquared, g, fv2, mv2, mvdot, beta):
+    	D = 0 # to see effect of ignoring drag
+		L = a+b
+		# find maximum deceleration assuming back wheels limit
+		g1 = g[0]
+		g2 = g[1]
+		g3 = g[2]
+		fv22 = fv2[1]
+		fv23 = fv2[2]
+		mv22 = mv2[0]
+		mv23 = mv2[1]
+		mvdot2 = mvdot[0]
+		mvdot3 = mvdot[1]
+
+		g = m/(1 + beta)
+		h = (m*g1 + D*Vsquared)/(1+beta)
+		c = -mvdot3/L
+		d = (a*m*(fv22*Vsquared + g2) - mv23*Vsquared)/L
+		e = (m*hcg + mvdot2)/L
+		f = (m*a*(fv23*Vsquared+g3) + hcg*(m*g1 + D*Vsquared) + mv22*Vsquared)/L
+		A = (g)**2 + (c)**2 - mu**2*(e)**2
+		B = 2*((g)*(h) + (c)*(d) - mu**2*(e)*(f))
+		C = (h)**2 + (d)**2 - mu**2*(f)**2
+
+
+		# use negative solution
+		try:
+			vdot = (-B - sqrt(B**2 - 4*A*C))/(2*A)
+
+		except:
+		    vdot = -h/g   # if limits exceeded, grade and drag only
+		
+		Fzr = e*vdot + f
+		Fzf = m*(fv23*Vsquared + g3) - Fzr
+		beta = Fzf/Fzr
+		vdot = vdot*brakeFactor	
+
+    	return vdot, beta
+
 
     def calcHeadingData(self):
 		psi = self.path.roadPsi
@@ -262,7 +670,7 @@ class RacingProfile():
     	return Fv2, G, Mv2, Mvdot, theta
 
     def rotaryDerivatives(self, Ib, theta, phi, dpsi_dsigma, dtheta_dsigma, dphi_dsigma, d2psi_dsigma2, d2theta_dsigma2, d2phi_dsigma2):	
-		#RotaryDerivatives Calculates coefficients for V^2 and Vdot in the moment equation
+		#RotaryDerivatives Calculates coefficients for V**2 and Vdot in the moment equation
 	    n = len(phi)
 	    #make dimensions compatible
 	    
