@@ -15,7 +15,6 @@ track.loadFromMAT('maps/thunderhill_race.mat')
 #track.generateRandomWorld(numTurns = 10)
 
 rp = RacingProfile(shelley, track, friction = 0.7, vMax = 99)
-Fv2, G, Mv2, MvDot, theta = rp.makePath3D()
 
-plt.plot(theta)
+plt.plot(rp.s, rp.Ux)
 plt.show()

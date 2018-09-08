@@ -157,13 +157,13 @@ class RacingProfile():
 		self.Ux = np.zeros(self.s.shape)
 		self.Ax = np.zeros(self.s.shape)
 
-		#self.getRacingProfile()
+		self.getRacingProfile()
 
 
 	def getRacingProfile(self):
-
+		print("Generating Racing Profile")
 		Fv2, G, Mv2, MvDot, theta = self.makePath3D()
-		self.findSpeedProfile(Fv2, G, Mv2, Mvdot, theta)
+		self.findSpeedProfile(Fv2, G, Mv2, MvDot, theta)
 
 	def findSpeedProfile(self,Fv2, G, Mv2, Mvdot, theta):
 		
@@ -196,7 +196,7 @@ class RacingProfile():
 		
 
 		# find velocity max based on pointwise friction constraint
-		algebraicVmax = calcVmax(0, self.vehicle, mu, Fv2, G, Mv2[1:,:],Mvdot[1:,:])
+		algebraicVmax, _ = self.calcVmax(0, mu, Fv2, G, Mv2[1:,:],Mvdot[1:,:])
 		UxDesired = np.minimum(Vmax, algebraicVmax)    #target speed
 		
 		s, UxDesired,AxDesired,AxMax = self.generateSpeedProfile(UxDesired,AxDesired,mu,s,Fv2,G,Mv2,Mvdot,theta)
@@ -223,9 +223,9 @@ class RacingProfile():
 		b = self.vehicle.b
 		L = a+b    # wheelbase, [m]
 		m = self.vehicle.m
-		D = self.vehicle.D
+		D = self.vehicle.dragCoeff
 		hcg = self.vehicle.h 
-		beta = self.beta   # ratio of front to rear wheel torques may need to reexamine this to decide if it needs to be different for  braking and driving
+		beta = self.vehicle.beta   # ratio of front to rear wheel torques may need to reexamine this to decide if it needs to be different for  braking and driving
 
 		# terms in constraint equation
 		g1 = g[0,:]
@@ -273,8 +273,6 @@ class RacingProfile():
 		B = 2*((g)*(h) + (c)*(d) - mu**2*(e)*(f))
 		C = (h)**2 + (d)**2 - mu**2*(f)**2
 
-		VmaxRear = sqrt((-B + sqrt(B**2 - 4*A*C))/(2*A))
-
 		for i in range(len(B)):
 			try:
 				VmaxRear[i] = np.sqrt((-B[i] + np.sqrt(B[i]**2 - 4*A[i]*C[i]))/(2*A[i]))
@@ -290,7 +288,7 @@ class RacingProfile():
 	def generateSpeedProfile(self, speedLim, AxDesired,mu,sigma,Fv2,G,Mv2,Mvdot,theta):
 
 
-		n = len(posDesired)
+		n = len(sigma)
 		# Integrate backwards from minimum speed point to find safe upper bound on
 		# speed accounting for turning limits and deceleration limits
 
@@ -300,19 +298,18 @@ class RacingProfile():
 		
 		if pos != 0:
 			step = sigma[1] - sigma[0]
-			muConcat = np.concatenate(mu[pos:], mu[:pos]) #circshift should really be used here
-			sigmaConcat = np.concatenate(sigma[pos:], sigma[:pos]) #circshift should really be used here
+			muConcat = np.concatenate((mu[pos:], mu[:pos])) #circshift should really be used here
+			sigmaConcat = np.concatenate((sigma[pos:], sigma[:pos])) #circshift should really be used here
+			fv2Concat = np.concatenate((Fv2[:, pos:], Fv2[:,:pos]), axis = 1) #circshift should really be used here
+			gConcat =   np.concatenate((G[:,pos:], G[:,:pos]), axis = 1) #circshift should really be used here
+			mv2Concat = np.concatenate((Mv2[1:,pos:], Mv2[1:,:pos]), axis = 1) #circshift should really be used here
+			mvdotConcat =    np.concatenate(( Mvdot[1:,pos:], Mvdot[1:,:pos]), axis = 1) #circshift should really be used here
+			thetaConcat =    np.concatenate(( theta[pos:], theta[:pos])) #circshift should really be used here
+			speedLimConcat = np.concatenate(( speedLim[pos:], speedLim[:pos])) #circshift should really be used here
 
-			fv2Concat = np.concatenate(Fv2[:, pos:], Fv2[:,:pos]) #circshift should really be used here
-			gConcat =   np.concatenate(G[:,pos:], G[:,:pos]) #circshift should really be used here
-			mv2Concat = np.concatenate(Mv2[1:,pos:], Mv2[1:,:pos]) #circshift should really be used here
-			mvdotConcat =    np.concatenate( Mvdot[1:,pos:], Mvdot[1:,:pos]) #circshift should really be used here
-			thetaConcat =    np.concatenate( theta[pos:], theta[:pos]) #circshift should really be used here
-			speedLimConcat = np.concatenate( speedLim[pos:], speedLim[:pos]) #circshift should really be used here
-
-			posDesired,UxDesired, AxDesired  = integrateBackward(step,n,speedLim[IDX],AxDesired[IDX],muConcat , sigmaConcat , fv2Concat ,gConcat ,mv2Concat, mvdotConcat ,thetaConcat, speedLimConcat)
+			posDesired,UxDesired, AxDesired  = self.integrateBackward(step,n,speedLim[IDX],AxDesired[IDX],muConcat , sigmaConcat , fv2Concat ,gConcat ,mv2Concat, mvdotConcat ,thetaConcat, speedLimConcat)
 		else:
-			posDesired,UxDesired, AxDesired  = integrateBackward(step,n,speedLim[IDX],AxDesired[IDX],mu,              sigma,              Fv2,             G,             Mv2[1:,:],      Mvdot[1:,:],      theta,             speedLim)
+			posDesired,UxDesired, AxDesired  = self.integrateBackward(step,n,speedLim[IDX],AxDesired[IDX],mu,              sigma,              Fv2,             G,             Mv2[1:,:],      Mvdot[1:,:],      theta,             speedLim)
 		
 		# return points to normal order
 		I = np.argsort(posDesired)
@@ -410,7 +407,7 @@ class RacingProfile():
 
 		P = self.vehicle.powerLimit # engine power, [W]
 		m = self.vehicle.m
-		D = self.vehicle.D
+		D = self.vehicle.dragCoeff
 		rr = self.vehicle.rollResistance
 
 
@@ -462,7 +459,7 @@ class RacingProfile():
 		a = self.vehicle.a
 		b = self.vehicle.b
 		hcg = self.vehicle.h
-		D = self.vehicle.D
+		D = self.vehicle.dragCoeff
 		L = a+b
 		# terms in constraint equation
 		g1 = g[0]
@@ -505,7 +502,7 @@ class RacingProfile():
 		a = self.vehicle.a
 		b = self.vehicle.b
 		hcg = self.vehicle.h
-		D = self.vehicle.D
+		D = self.vehicle.dragCoeff
 		L = a+b
 
 		# find maximum acceleration assuming back wheels limit
@@ -550,7 +547,7 @@ class RacingProfile():
 		a = self.vehicle.a
 		b = self.vehicle.b
 		hcg = self.vehicle.h
-		D = self.vehicle.D
+		D = self.vehicle.dragCoeff
 		L = a+b
 
 		#terms in constraint equation
