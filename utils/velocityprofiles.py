@@ -199,6 +199,8 @@ class RacingProfile():
 		# find velocity max based on pointwise friction constraint
 		algebraicVmax, _ = self.calcVmax(0, mu, Fv2, G, Mv2[1:,:],Mvdot[1:,:])
 		UxDesired = np.minimum(Vmax, algebraicVmax)    #target speed
+		plt.plot(s, UxDesired)
+		plt.show()
 		
 		s, UxDesired,AxDesired,AxMax = self.generateSpeedProfile(UxDesired,AxDesired,mu,s,Fv2,G,Mv2,Mvdot,theta)
 
@@ -258,6 +260,8 @@ class RacingProfile():
 		for i in range(len(B)):
 			try:
 				VmaxFront[i] = np.sqrt((-B[i] + np.sqrt(B[i]**2 - 4*A[i]*C[i]))/(2*A[i]))
+				if np.isnan(VmaxFront[i]):
+					VmaxFront[i] = self.vMax #handle negative square roots
 			except:
 				VmaxFront[i] = self.vMax
 
@@ -277,6 +281,8 @@ class RacingProfile():
 		for i in range(len(B)):
 			try:
 				VmaxRear[i] = np.sqrt((-B[i] + np.sqrt(B[i]**2 - 4*A[i]*C[i]))/(2*A[i]))
+				if np.isnan(VmaxRear[i]):
+					VmaxRear[i] = self.vMax #handle negative square roots
 			except:
 				VmaxRear[i] = self.vMax
 

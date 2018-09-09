@@ -14,8 +14,8 @@ track = Path()
 track.loadFromMAT('maps/thunderhill_race.mat')
 #track.generateRandomWorld(numTurns = 10)
 
-#bp = BasicProfile (shelley, track, friction = 0.7, vMax = 99)
-rp = RacingProfile(shelley, track, friction = 0.7, vMax = 99)
+#bp = BasicProfile (shelley, track, friction = 0.9, vMax = 99)
+rp = RacingProfile(shelley, track, friction = 0.9, vMax = 99)
 
-plt.plot(rp.s)
-plt.show()
+# plt.plot(rp.s)
+# plt.show()
