@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import scipy.io as sio
 from numpy import cos
 from numpy import sin
+import pdb
 #Defines a velocity profile class
 
 class RecordedProfile():
@@ -146,9 +147,10 @@ class BasicProfile():
 #Attribution: John Subosits, Mick Kritayakirana
 
 class RacingProfile():
-	def __init__(self, vehicle, path, friction = 0.3, vMax = 10, jerkLimit = 800):
+	def __init__(self, vehicle, path, friction = 0.3, vMax = 10, jerkLimit = 800, ds = 0.5):
 		self.vehicle = vehicle 
 		self.path = path
+		self.path.resample(ds) #resample path to fixed ds 
 		self.mu = friction
 		self.vMax = vMax #max velocity
 		self.jerkLimit = jerkLimit # m / s^3
@@ -158,7 +160,7 @@ class RacingProfile():
 		self.Ux = np.zeros(self.s.shape)
 		self.Ax = np.zeros(self.s.shape)
 
-		self.getRacingProfile()
+#		self.getRacingProfile()
 
 
 	def getRacingProfile(self):
@@ -199,9 +201,8 @@ class RacingProfile():
 		# find velocity max based on pointwise friction constraint
 		algebraicVmax, _ = self.calcVmax(0, mu, Fv2, G, Mv2[1:,:],Mvdot[1:,:])
 		UxDesired = np.minimum(Vmax, algebraicVmax)    #target speed
-		plt.plot(s, UxDesired)
-		plt.show()
-		
+		self.UxDesiredAlgebraic = UxDesired
+
 		s, UxDesired,AxDesired,AxMax = self.generateSpeedProfile(UxDesired,AxDesired,mu,s,Fv2,G,Mv2,Mvdot,theta)
 
 		#close the loop and ensure continuity
@@ -319,12 +320,16 @@ class RacingProfile():
 			posDesired,UxDesired, AxDesired  = self.integrateBackward(step,n,speedLim[IDX],AxDesired[IDX],mu,              sigma,              Fv2,             G,             Mv2[1:,:],      Mvdot[1:,:],      theta,             speedLim)
 		
 		# return points to normal order
-		I = np.argsort(posDesired)
+		plt.plot(posDesired, UxDesired)
+		plt.show()
+
+
+
+		I = np.argsort(posDesired, axis = 0)
 
 		posDesired = posDesired[I].squeeze()
 		UxDesired = UxDesired[I].squeeze()
 		AxDesired = AxDesired[I].squeeze()
-
 
 		# Integrate forwards accounting for friction limits
 		pos = IDX % n
@@ -350,7 +355,7 @@ class RacingProfile():
 
 
 		# sort back into order from start to  of the path
-		I = np.argsort(posDesired)
+		I = np.argsort(posDesired, axis = 0)
 		posDesired = posDesired[I]
 		UxDesired = UxDesired[I]
 		AxDesired = AxDesired[I]
@@ -367,15 +372,16 @@ class RacingProfile():
 		Vsquared = endSpeed**2
 		beta = self.vehicle.beta
 
-
 		for i in range(0, n-2):
-			Ux[n-i-1-1] = np.sqrt(Vsquared)
-			Ax[n-i-1-1] = ax
-			
+			Ux[n-i-1] = np.sqrt(Vsquared)
+			Ax[n-i-1] = ax
+
 			# find limits on front and rear tires and max speed
 			axF,betaF = self.decelFront(Vsquared,g[:,n-i-1],fv2[:,n-i-1],mv2[:,n-i-1],mvdot[:,n-i-1],mu[n-i-1], beta)
 			axR,betaR = self.decelRear (Vsquared,g[:,n-i-1],fv2[:,n-i-1],mv2[:,n-i-1],mvdot[:,n-i-1],mu[n-i-1], beta)
 			Vmax = speedLimit[n-i-2]
+
+
 			
 			# take smaller magnitude and corresponding brake proportioning
 			if axF > axR:
@@ -387,6 +393,10 @@ class RacingProfile():
 			
 			ax = min(ax,0)
 			
+			if i is 0:
+				print(ax)
+
+
 			# control how fast we can come off the brakes to limit understeer on
 			# entry
 			if (ax-Ax[n-i-1])/step*np.sqrt(Vsquared) < -self.jerkLimit:
@@ -586,10 +596,12 @@ class RacingProfile():
 		B = 2*((g)*(h) + (c)*(d) - mu**2*(e)*(f))
 		C = (h)**2 + (d)**2 - mu**2*(f)**2
 
+		#pdb.set_trace()
+
 		# use negative solution to quadratic eqn.
 		
 		try:
-			vdot = (-B - sqrt(B**2 - 4*A*C))/(2*A) # * brakeFactor # scale deceleration by brakeFactor
+			vdot = (-B - np.sqrt(B**2 - 4*A*C))/(2*A) # * brakeFactor # scale deceleration by brakeFactor
 		except:
 			vdot = -h/g   # if limits exceeded, grade and drag only
 		

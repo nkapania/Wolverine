@@ -106,6 +106,39 @@ class Path:
 
 		self.genFromSK(s, k)
 
+	def resample(self, ds):
+		#resample path to a different constant spacing
+
+		numPoints = np.floor(self.s[-1] / ds)
+		s = np.linspace(0, self.s[-1], numPoints)
+		curvature = np.interp(s, self.s, self.curvature)
+		posE = np.interp(s, self.s, self.posE)
+		posN = np.interp(s, self.s, self.posN)
+		roadPsi = np.interp(s, self.s, self.roadPsi)
+		
+		#not sure the best way to do these next six lines
+		b1 = np.interp(s, self.s, self.bank[:,0])
+		b2 = np.interp(s, self.s, self.bank[:,1])
+		b3 = np.interp(s, self.s, self.bank[:,2])
+		g1 = np.interp(s, self.s, self.grade[:,0])
+		g2 = np.interp(s, self.s, self.grade[:,1])
+		g3 = np.interp(s, self.s, self.grade[:,2])
+
+		bank = np.concatenate((b1[:, np.newaxis], b2[:,np.newaxis], b3[:,np.newaxis]), axis = 1)
+		grade = np.concatenate((g1[:, np.newaxis], g2[:, np.newaxis], g3[:, np.newaxis]), axis = 1)
+
+		self.s = s
+		self.curvature = curvature
+		self.posE = posE
+		self.posN = posN
+		self.roadPsi = roadPsi
+		self.bank = bank
+		self.grade = grade
+
+		return
+
+
+
 
 ###################################################################################################
 ################################### HELPER FUNCTIONS ##############################################
