@@ -29,6 +29,7 @@ class Vehicle:
             self.dragCoeff = 0.3638 #N / (m/s)^2
             self.deltaLim = 27. * np.pi / 180  #Steering limit, radians
             self.beta = 2.0 #ratio of front to wheel rear torque - used currently for vp gen
+            self.brakeFactor = 0.95 #parameter needed for velocity profile generation
 
         ##NOTE: Need to fill in with genesis parameters!!!!!!
         elif vehicleName is "genesis":
