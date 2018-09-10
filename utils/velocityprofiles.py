@@ -367,7 +367,7 @@ class RacingProfile():
 		Vsquared = endSpeed**2
 		beta = self.vehicle.beta
 
-		for i in range(0, n-2):
+		for i in range(0, n-1):
 			Ux[n-i-1] = np.sqrt(Vsquared)
 			Ax[n-i-1] = ax
 
@@ -385,10 +385,6 @@ class RacingProfile():
 				beta = betaR
 			
 			ax = min(ax,0)
-			
-			if i is 0:
-				print(ax)
-
 
 			# control how fast we can come off the brakes to limit understeer on
 			# entry
@@ -423,8 +419,7 @@ class RacingProfile():
 		rr = self.vehicle.rollResistance
 		beta = self.vehicle.beta
 
-
-		for i in range(n):
+		for i in range(n-1):
 			UxDesired[i] = np.sqrt(Vsquared)
 
 			# find limits on front and rear tires and max speed
@@ -465,7 +460,7 @@ class RacingProfile():
 
 			AxDesired[i] = ax
 
-			return posDesired, UxDesired, AxDesired, AxMax
+		return posDesired, UxDesired, AxDesired, AxMax
 
 	def accelFront(self, Vsquared, g, fv2, mv2, mvdot, mu, beta):
 
