@@ -160,7 +160,7 @@ class RacingProfile():
 		self.Ux = np.zeros(self.s.shape)
 		self.Ax = np.zeros(self.s.shape)
 
-#		self.getRacingProfile()
+		self.getRacingProfile()
 
 
 	def getRacingProfile(self):
@@ -303,7 +303,7 @@ class RacingProfile():
 		IDX = np.argmin(speedLim)
 
 		pos = IDX+1 % n
-		
+
 		if pos != 0:
 			step = sigma[1] - sigma[0]
 			muConcat = np.concatenate((mu[pos:], mu[:pos])) #circshift should really be used here
@@ -320,11 +320,6 @@ class RacingProfile():
 			posDesired,UxDesired, AxDesired  = self.integrateBackward(step,n,speedLim[IDX],AxDesired[IDX],mu,              sigma,              Fv2,             G,             Mv2[1:,:],      Mvdot[1:,:],      theta,             speedLim)
 		
 		# return points to normal order
-		plt.plot(posDesired, UxDesired)
-		plt.show()
-
-
-
 		I = np.argsort(posDesired, axis = 0)
 
 		posDesired = posDesired[I].squeeze()
@@ -380,8 +375,6 @@ class RacingProfile():
 			axF,betaF = self.decelFront(Vsquared,g[:,n-i-1],fv2[:,n-i-1],mv2[:,n-i-1],mvdot[:,n-i-1],mu[n-i-1], beta)
 			axR,betaR = self.decelRear (Vsquared,g[:,n-i-1],fv2[:,n-i-1],mv2[:,n-i-1],mvdot[:,n-i-1],mu[n-i-1], beta)
 			Vmax = speedLimit[n-i-2]
-
-
 			
 			# take smaller magnitude and corresponding brake proportioning
 			if axF > axR:
@@ -506,9 +499,8 @@ class RacingProfile():
 		C = (h)**2 + (d)**2 - mu**2*(f)**2
 
 		# use positive solution to quadratic eqn.
-		try:
-			vdot = (-B + np.sqrt(B**2 - 4*A*C))/(2*A)
-		except:
+		vdot = (-B + np.sqrt(B**2 - 4*A*C))/(2*A)
+		if np.isnan(vdot) or vdot < 0:
 		 	vdot = 0 # maybe this is feasible by a different torque dist.
 		
 		# find the front/rear weight distribution for brake proportioning next time
@@ -551,11 +543,9 @@ class RacingProfile():
 
 
 		# use positive solution to quadratic eqn.
-		try:
-			vdot = (-B + np.sqrt(B**2 - 4*A*C))/(2*A)
-		except:
+		vdot = (-B + np.sqrt(B**2 - 4*A*C))/(2*A)
+		if np.isnan(vdot) or vdot < 0:
 			vdot = 0 # maybe this is feasible by a different torque dist.
-		
 
 		Fzr = e*vdot + f
 		Fzf = m*(fv23*Vsquared + g3) - Fzr
@@ -600,9 +590,8 @@ class RacingProfile():
 
 		# use negative solution to quadratic eqn.
 		
-		try:
-			vdot = (-B - np.sqrt(B**2 - 4*A*C))/(2*A) # * brakeFactor # scale deceleration by brakeFactor
-		except:
+		vdot = (-B - np.sqrt(B**2 - 4*A*C))/(2*A) # * brakeFactor # scale deceleration by brakeFactor
+		if np.isnan(vdot) or vdot > 0:
 			vdot = -h/g   # if limits exceeded, grade and drag only
 		
 		# find the front/rear weight distribution for brake proportioning next time
@@ -644,10 +633,8 @@ class RacingProfile():
 
 
 		# use negative solution
-		try:
-			vdot = (-B - sqrt(B**2 - 4*A*C))/(2*A)
-
-		except:
+		vdot = (-B - np.sqrt(B**2 - 4*A*C))/(2*A)
+		if np.isnan(vdot) or (vdot > 0):
 			vdot = -h/g   # if limits exceeded, grade and drag only
 		
 		Fzr = e*vdot + f
