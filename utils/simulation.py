@@ -360,7 +360,6 @@ class MyAnimation:
 
         #calculate vehicle coordinates
         FrontBody, RearBody, FrontAxle, RearAxle, RightFrontTire, RightRearTire, LeftFrontTire, LeftRearTire = _plotVehicle(x[0], y[0], psi[0], delta[0], a, b, d, rW)
-        print(FrontBody)
 
 
         #plot vehicle coordinates - needs to be done once outside of loop I believe

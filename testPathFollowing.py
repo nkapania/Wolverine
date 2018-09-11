@@ -11,22 +11,23 @@ veh = Vehicle(vehicleName = "shelley")
 
 #Create path object
 track = Path()
-track.loadFromMAT("maps/THrace.mat")
+track.loadFromMAT("maps/thunderhill_race.mat")
 #track.generateRandomWorld(numTurns = 10)
 
 # Create speed profile
-speedProfile = BasicProfile(veh, track, friction = 0.9, vMax = 99)
+speedProfile = RacingProfile(veh, track, friction = 0.90, vMax = 99)
 
 # #Create controller object - use lanekeeping
 #controller = NeuralNetFeedforward(track, veh, speedProfile)
 controller = LaneKeepingController(track, veh, speedProfile)
 
 #simulate
-bikeSim = Simulation(veh, controller, path = track, profile = speedProfile, mapMatchType = "closest") 
+bikeSim = Simulation(veh, controller, path = track, profile = speedProfile, 
+	mapMatchType = "closest", tires = "coupled") 
 logFile = bikeSim.simulate()
 
 #analyze results
-#bikeSim.plotResults()
+bikeSim.plotResults()
 
 # # #animate car
 #anim = MyAnimation(logFile, track, veh, timeStep = bikeSim.ts, interval = 5)
@@ -34,4 +35,4 @@ logFile = bikeSim.simulate()
 
 
 #write to .mat file
-bikeSim.save('logs/mu9')
+#bikeSim.save('logs/mu9')

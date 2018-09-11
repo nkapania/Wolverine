@@ -16,8 +16,8 @@ class Vehicle:
             self.Cf = 160000.0 #vehicle cornering stiffness (N)
             self.Cr = 180000.0 #vehicle cornering stiffness (N)
             self.Iz  = 2.25E3  #vehicle inertia (kg  m^2)
-            self.muF = 1.05     #front friction coeff
-            self.muR = 1.05    #rear friction coeff
+            self.muF = 0.97     #front friction coeff
+            self.muR = 1.02    #rear friction coeff
             self.g = 9.81      #m/s^2, accel due to gravity
             self.L = self.a + self.b #total vehicle length, m
             self.FzF = self.m*self.b*self.g/self.L   #Maximum force on front vehicles
