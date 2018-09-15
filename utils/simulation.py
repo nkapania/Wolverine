@@ -155,6 +155,8 @@ class Simulation:
         
         return derivs, slips, forces
 
+    def getLapTime(self):
+        return self.logFile["t"][-1]
 
     def save(self, filename):
 
