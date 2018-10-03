@@ -162,6 +162,11 @@ class RacingProfile():
 
 		self.getRacingProfile()
 
+	def resample(self, ds):
+		newS = np.arange(0, self.s[-1], ds)
+		self.Ux = np.interp(newS, self.s, self.Ux)
+		self.Ax = np.interp(newS, self.s, self.Ax)
+		self.s = newS
 
 	def getRacingProfile(self):
 		print("Generating Racing Profile")
@@ -761,6 +766,15 @@ class RacingProfile():
 			G[:,i] =     np.dot( M_BI ,  np.array([ [0] , [0] , [self.vehicle.g] ]) ).squeeze()
 
 		return Fv2, Fvdot, G
+
+
+############################# HELPER FUNCTIONS ##############################################################
+def getLapTime(s, Ux):
+
+	ts = np.concatenate(( s[1, np.newaxis], np.diff(s) )) / Ux
+	lapTime = np.sum(ts)
+
+	return lapTime, ts
 		
 
 

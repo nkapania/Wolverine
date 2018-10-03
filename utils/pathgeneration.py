@@ -1,5 +1,6 @@
 import numpy as np 
 import cvxpy as cp
+import utils
 from velocityprofiles import *
 from simulation import *
 from control import *
@@ -102,13 +103,13 @@ class RapidPathGeneration:
 		lam2 = self.lam2
 
 		#get problem data
-		offset = np.norm( [self.path.posE[0] - self.path.posE[-1], self.path.posN[0] - self.path.posN[-1]] )
+		offset = np.linalg.norm( [self.path.posE[0] - self.path.posE[-1], self.path.posN[0] - self.path.posN[-1]] )
 		ds = np.diff(s)
 
-		_, ts = vp.getLapTime()
+		_, ts = getLapTime(self.vp.s, self.vp.Ux)
 
 		print('Generating Affine Tire Models ...')
-		A, B, d = self.getAllSys(veh, Ux, K, ts)
+		A, B, d = utils.getAllSys(veh, Ux, K, ts)
 
 		#Construct the problem here
 		print('Solving Convex Problem ...')
