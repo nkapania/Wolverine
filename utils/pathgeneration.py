@@ -21,11 +21,11 @@ class OptimizationResults:
 
 
 class RapidPathGeneration:
-	def __init__(self, vehicle, path, bounds, NUM_ITERS = 5, buff = None): 
+	def __init__(self, vehicle, path, bounds, mu, NUM_ITERS = 5, buff = None): 
 		
 		#optimization parameters
 		self.NUM_ITERS = NUM_ITERS
-		self.NUM_POINTS = 1000 #number of points in optimization routine
+		self.NUM_POINTS = 1863 #number of points in optimization routine - currently set to match MATLAB
 		self.lam1 = 1 #weight on steering regularization
 		self.lam2 = np.zeros((self.NUM_POINTS, 1)) #weight on minimum distance
 
@@ -35,7 +35,7 @@ class RapidPathGeneration:
 		self.initialPath = path #used as the reference for updating the world after every iteration
 		self.path = path
 		self.bounds = bounds
-		self.mu = vehicle.muF * 0.95 #drive at the limits
+		self.mu = mu
 		
 		#add in option to add road buffer
 		if buff is None:
@@ -45,7 +45,7 @@ class RapidPathGeneration:
 		
 		self.widthLeft, self.widthRight  = self.getLaneWidth()
 		#initial solution
-		self.vp = RacingProfile(vehicle, path, self.mu)
+		self.vp = RacingProfile(vehicle, path, self.mu, vMax = 99)
 		controller = LaneKeepingController(path, vehicle, self.vp)
 		bikeSim = Simulation(vehicle, controller, path = self.path, profile = self.vp, mapMatchType = "closest")
 		#logFile0 = bikeSim.simulate()
@@ -83,11 +83,33 @@ class RapidPathGeneration:
 	def getRapidTrajectory(self):
 		#resample world and velocity profile objects for optimization
 		ds = self.path.s[-1] / self.NUM_POINTS
-		self.path.resample(ds)
 		
+		self.path.resample(ds)	
 		self.vp.resample(ds)
+		self.resampleLaneWidth()
+
+		plt.plot(self.widthLeft)
+		plt.plot(self.widthRight)
+		plt.show()
+
 		opt = self.getCurvatureProfile()
+
 		return opt
+
+
+	def resampleLaneWidth(self):
+		#called after path and velocity profile are resampled
+
+		n = len(self.path.s)
+		N = len(self.widthLeft)
+
+		ind = np.round(np.linspace(0, N-1, n))
+		ind = ind.astype(int)
+		
+		self.widthLeft = self.widthLeft[ind]
+		self.widthRight= self.widthRight[ind]
+
+		return
 
 
 	def getCurvatureProfile(self):
@@ -109,19 +131,21 @@ class RapidPathGeneration:
 		_, ts = getLapTime(self.vp.s, self.vp.Ux)
 
 		print('Generating Affine Tire Models ...')
-		A, B, d = utils.getAllSys(veh, Ux, K, ts)
+		A, B, d = utils.getAllSys(self.vehicle, Ux, K, ts)
 
 		#Construct the problem here
 		print('Solving Convex Problem ...')
 
 		delta = cp.Variable(n)
-		x     = cp.Variable(4,n) 
+		x     = cp.Variable((4,n)) 
 
 		#STATE: x[0] is e, x[1] is dPsi, x[2] is yaw rate, x[3] is sideslip
+		Kmat = np.diag(-K[0:n-1])
 
-		#add in objectives
-		objective = cp.Minimize(cp.norm( 1/ds*(psiR[1:N] - psiR[0:N-1] + x[1,1:N].T - x[1,0:N-1].T), 2) + lam1*norm(delta[1:N]-delta[0:N-1]) + cp.sum(  lam2[0:N-1]*(ds/Ux[0:N-1]* ( -K[0:N-1]*x[0,0:N-1].T  )   +   ds/Ux[0:N-1]*cp.square( x[3,0:N-1] + x[1,0:N-1]   ).T)  ))
-		
+		objective = cp.Minimize(cp.norm( 1/ds*(psiR[1:n] - psiR[0:n-1] + x[1,1:n].T - x[1,0:n-1].T), 2) +
+		lam1*cp.norm(delta[1:n]-delta[0:n-1]) + 
+		cp.sum(  lam2[0:n-1]*(ds/Ux[0:n-1]* ( Kmat*x[0,0:n-1].T  )   +
+		ds/Ux[0:n-1]*cp.square( x[3,0:n-1] + x[1,0:n-1]   ).T) ))
 
 		#add in constraints
 		constraints = []
@@ -129,23 +153,27 @@ class RapidPathGeneration:
 		for i in range(n-1):
 			constraints += [ x[:,i+1] == A[i]*x[:,i] + B[i]*delta[i] + d[i] ]
 
-		constraints += [x[0,:] <= self.widthLeft]
-		constraints += [x[0,:] >= self.widthRight]
+		constraints += [x[0,:] <= self.widthLeft.squeeze()]
+		constraints += [x[0,:] >= self.widthRight.squeeze()]
 
 
-		constraints += [x[0,n] == x[0,0]                          - offset] #account for any small offsets
-		constraints += [x[1,n] == x[1,0]                                  ] #continuity for dPsi, beta, and r between beginning and end.
-		constraints += [x[2,n] == x[2,0]                                  ]
-		constraints += [x[3,n] == x[3,0]                                  ]
+		constraints += [x[0,n-1] == x[0,0]                          - offset] #account for any small offsets
+		constraints += [x[1,n-1] == x[1,0]                                  ] #continuity for dPsi, beta, and r between beginning and end.
+		constraints += [x[2,n-1] == x[2,0]                                  ]
+		constraints += [x[3,n-1] == x[3,0]                                  ]
 		 
-		constraints += [(x[0,n] - x[0,n-1])/ds[-1] == (x[0,1] - x[0,0])/ds[0] ]#also needed to ensure dPsi continuity - still not sure why though.
+		constraints += [(x[0,n-1] - x[0,n-2])/ds[-1] == (x[0,1] - x[0,0])/ds[0] ]#also needed to ensure dPsi continuity - still not sure why though.
 
 		prob = cp.Problem(objective, constraints)
 		res =prob.solve()
 
+		print(res)
 		opt = {}
-		opt["aF"] = x[3,:] + veh.a*x[2,:]/Ux.T - delta.T
-		opt["aR"] = x[3,:] - veh.b*x[2,:]/Ux.T
+		opt["feasible"] = res != np.inf
+		if not opt["feasible"]:
+			sys.exit('No feasible solution found')
+		opt["aF"] = x[3,:].value + self.vehicle.a*x[2,:].value/Ux - delta
+		opt["aR"] = x[3,:] - self.vehicle.b*x[2,:]/Ux.T
 		opt["e"] = x[0,:]
 		opt["dPsi"] = x[1,:]
 		opt["r"] = x[2,:]
@@ -157,9 +185,7 @@ class RapidPathGeneration:
 		[opt.posE, opt.posN] = convertPathToGlobal(self.path, self.path.s, opt["e"]) 
 		opt["K"] = 1/ds*np.diff(psiR + opt["dPsi"])
 		opt["K"] = np.concatenate(opt["K"][0], opt["K"]) #ensure consistency of dimensions
-		opt.feasible = res != np.inf
-		if not opt.feasible:
-			sys.exit('No feasible solution found')
+
 
 		return opt
 
@@ -179,7 +205,7 @@ class RapidPathGeneration:
 		self.updateLam2()
 
 		#recompute lane width 
-		world = self.getLaneWidth()
+		_,_ = self.getLaneWidth()
 
 		return
 
@@ -202,8 +228,8 @@ class RapidPathGeneration:
 	    	point = [path.posE[i], path.posN[i]]
 
 	    	widthLeft[i], idxLeft = getMinDistance(point, self.bounds["in"], idxLeft) - buffer[i]
-	    	#print(widthLeft[i])
-	    	#print(idxLeft)
+	    	print(widthLeft[i])
+	    	print(idxLeft)
 
 	    for i in range(n):
 	    	point = [path.posE[i], path.posN[i]]
@@ -257,7 +283,7 @@ def getMinDistance(point, line, lastidx):
 			dist = np.linalg.norm(point - line[idx,:])
 			if dist < shortest:
 				shortest = dist
-				lastInd = idx
+				lastidx = idx
 
 			if idx == (n-1):
 				idx = 0
@@ -274,7 +300,7 @@ def getMinDistance(point, line, lastidx):
 			dist = np.linalg.norm(point - line[idx,:])
 			if dist < shortest:
 				shortest = dist
-				lastInd = idx
+				lastidx = idx
 
 			if idx is 0:
 				idx = n - 1
@@ -284,7 +310,7 @@ def getMinDistance(point, line, lastidx):
 
 			i = i + 1
 
-	return shortest, idx
+	return shortest, lastidx
 
 
 

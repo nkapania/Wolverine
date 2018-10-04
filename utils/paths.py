@@ -109,8 +109,7 @@ class Path:
 	def resample(self, ds):
 		#resample path to a different constant spacing
 
-		numPoints = np.floor(self.s[-1] / ds)
-		s = np.linspace(0, self.s[-1], numPoints)
+		s = np.arange(0, self.s[-1], ds)
 		curvature = np.interp(s, self.s, self.curvature)
 		posE = np.interp(s, self.s, self.posE)
 		posN = np.interp(s, self.s, self.posN)
