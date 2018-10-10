@@ -4,6 +4,7 @@ import utils
 from velocityprofiles import *
 from simulation import *
 from control import *
+from paths import *
 import sys
 from scipy import interpolate
 
@@ -47,7 +48,7 @@ class RapidPathGeneration:
 		#initial solution
 		self.vp = RacingProfile(vehicle, path, self.mu, vMax = 99)
 		controller = LaneKeepingController(path, vehicle, self.vp)
-		bikeSim = Simulation(vehicle, controller, path = self.path, profile = self.vp, mapMatchType = "closest")
+		self.bikeSim = Simulation(vehicle, controller, path = self.path, profile = self.vp, mapMatchType = "closest")
 		#logFile0 = bikeSim.simulate()
 		#lapTime = bikeSim.getLapTime()
 		lapTime = 0
@@ -67,15 +68,15 @@ class RapidPathGeneration:
 			self.updateWorld(opt)
 			
 			#generate velocity profile
-			self.vp = RacingProfile(self.path, self.vehicle, self.mu)
+			self.vp = RacingProfile(self.vehicle, self.path, self.mu)
 
 			#simulate and collect new lap time
-			bikeSim.updatePath(self.path)
-			logFile = bikeSim.simulate()
-			lapTime = getLapTime(logFile)
+			self.bikeSim.updatePath(self.path)
+			logFile = self.bikeSim.simulate()
+			lapTime = self.bikeSim.getLapTime()
 
 			#cache problem data
-			optResults.append(self.vp, logFile, opt, self.path)
+			self.optResults.append(self.vp, logFile, opt, self.path)
 
 		return self.path, self.vp
 
@@ -167,24 +168,24 @@ class RapidPathGeneration:
 		prob = cp.Problem(objective, constraints)
 		res =prob.solve()
 
-		print(res)
+		x = x.value
 		opt = {}
 		opt["feasible"] = res != np.inf
 		if not opt["feasible"]:
 			sys.exit('No feasible solution found')
-		opt["aF"] = x[3,:].value + self.vehicle.a*x[2,:].value/Ux - delta
+		opt["aF"] = x[3,:] + self.vehicle.a*x[2,:]/Ux - delta
 		opt["aR"] = x[3,:] - self.vehicle.b*x[2,:]/Ux.T
 		opt["e"] = x[0,:]
 		opt["dPsi"] = x[1,:]
 		opt["r"] = x[2,:]
-		opt["roadPsi"] = opt.dPsi + psiR
+		opt["roadPsi"] = opt["dPsi"] + psiR
 		opt["beta"] = x[3,:].T 
 		opt["s"] = self.path.s
 		opt["ts"] = ts
 		opt["delta"] = delta
-		[opt.posE, opt.posN] = convertPathToGlobal(self.path, self.path.s, opt["e"]) 
+		opt["posE"], opt["posN"] = convertPathToGlobal(self.path, self.path.s, opt["e"]) 
 		opt["K"] = 1/ds*np.diff(psiR + opt["dPsi"])
-		opt["K"] = np.concatenate(opt["K"][0], opt["K"]) #ensure consistency of dimensions
+		opt["K"] = np.concatenate((opt["K"][0: np.newaxis], opt["K"])) #ensure consistency of dimensions
 
 
 		return opt
@@ -193,16 +194,17 @@ class RapidPathGeneration:
 	def updateWorld(self, opt):
 
 		tck = interpolate.splrep(opt["s"], opt["e"])
-		e   = interpolate.splev(self.initialPath, tck)
+		e   = interpolate.splev(self.initialPath.s, tck)
 
-		posE, posN = convertPathToGlobal(refWorld, refWorld.s, e); 
+		posE, posN = convertPathToGlobal(self.initialPath, self.initialPath.s, e); 
 		
 		#generate a new world object from the EN point cloud
-		self.path = genWorldFromEN(posE, posN)
+		self.path = Path() 
+		self.path.genFromEN(posE, posN, isOpen = False) #closed map
 		
 		#update buffer and lam2
-		self.updateBuffer()
-		self.updateLam2()
+		#self.updateBuffer()
+		#self.updateLam2()
 
 		#recompute lane width 
 		_,_ = self.getLaneWidth()
@@ -228,17 +230,15 @@ class RapidPathGeneration:
 	    	point = [path.posE[i], path.posN[i]]
 
 	    	widthLeft[i], idxLeft = getMinDistance(point, self.bounds["in"], idxLeft) - buffer[i]
-	    	print(widthLeft[i])
-	    	print(idxLeft)
 
 	    for i in range(n):
 	    	point = [path.posE[i], path.posN[i]]
-	    	widthRight[i], idxRight = getMinDistance(point, self.bounds["in"], idxRight) - buffer[i]
+	    	widthRight[i], idxRight = getMinDistance(point, self.bounds["out"], idxRight) - buffer[i]
 
 	    self.widthLeft = widthLeft
-	    self.widthRight = widthRight
+	    self.widthRight = -widthRight
 
-	    return widthLeft, widthRight
+	    return widthLeft, -widthRight
 
 
 
@@ -250,6 +250,22 @@ class RapidPathGeneration:
 #########################################################################################
 
 
+def convertPathToGlobal(path, s, e):
+	#converts s and e vectors along a path defined by world into S and E coordinates
+	n = len(s)
+	E = np.zeros((n,1))
+	N = np.zeros((n,1))
+
+	centE = np.interp(s, path.s, path.posE)
+	centN = np.interp(s, path.s, path.posN)
+	theta = np.interp(s, path.s, path.roadPsi)
+
+	for i in range(n):
+		E[i] = centE[i] - e[i] * np.sin( np.pi / 2 - theta[i])
+		N[i] = centN[i] - e[i] * np.cos( np.pi / 2 - theta[i])
+
+
+	return E, N
 
 #gets minimum distance between a point and a point cloud representing a road boundary or racing line
 #Can make this more sophisticated for a speedup
@@ -267,7 +283,7 @@ def getMinDistance(point, line, lastidx):
 
 	#search the whole map
 	if lastidx == -1:
-		for i in range(n):
+		for i in range(n-1): #needed to avoid out of bounds error
 			dist = np.linalg.norm(point - line[i,:])
 			if dist < shortest:
 				shortest = dist

@@ -135,6 +135,11 @@ class Simulation:
                 print("Car has left the track - terminating...")
                 self.isRunning = False
 
+    def updatePath(self, path):
+        self.path = path
+        return
+
+
     def printStatus(self, localState, counter):
         if self.path is None:
             t = counter * self.ts 
@@ -701,11 +706,6 @@ class MapMatch:
 #######################################################################################################################
 ####################################### HELPER FUNCTIONS ##############################################################
 #######################################################################################################################
-
-
-
-
-
 
 def  bicycleModel(vehicle, controlInput, localState, globalState, matchType, ts, K, weightTransferType, tireType):
     #Implementation of bicycle model with force derating, but no longitudinal dynamics

@@ -4,7 +4,11 @@ import numpy as np
 from numpy import genfromtxt
 import scipy.io as sio
 from scipy.integrate import odeint
+from scipy import interpolate
 
+
+#Path is a class that contains the path for the car to be driven. The arrays within class are kept rank 0 in order
+#for interp to be called on them. 
 
 class Path:
 	def __init__(self): 
@@ -66,6 +70,43 @@ class Path:
 			self.grade = np.zeros((self.s.size, 3))
 
 
+	def genFromEN(self, posE, posN, isOpen = True, KNOT_DISTANCE = 20):
+		N = len(posE)
+		self.s = np.zeros((N,))
+		self.posN = posN.squeeze() #keep arrays rank 0, in line with path formats. 
+		self.posE = posE.squeeze()
+
+		for i in range(1,N):
+			self.s[i] = self.s[i-1] + np.linalg.norm([posE[i] - posE[i-1], posN[i] - posN[i-1]])
+
+		#smooth curvature estimate by using cubic spline interpolation over sparse knot points
+		M = np.round(self.s[-1] / KNOT_DISTANCE) # number of knot points - spaced evenly every 20 meters
+		ind = np.ceil( np.linspace(1, N-1, M))
+		ind = ind.astype(int)
+
+		tckE = interpolate.splrep(self.s[ind], self.posE[ind])
+		tckN = interpolate.splrep(self.s[ind], self.posN[ind])
+
+		x = interpolate.splev(self.s, tckE)
+		y = interpolate.splev(self.s, tckN)
+
+		self.roadPsi = getPsiFromEN(x, y).squeeze()
+
+		#Note that this is different from Xavier MATLAB implementation - I couldn't
+		#figure out how to get the same spline output as the MATLAB code 
+
+		K = np.diff(self.roadPsi) / np.diff(self.s)
+		K = np.concatenate((K[0,np.newaxis], K))
+		self.curvature = K
+		
+		self.bank = np.zeros((self.s.size, 3)) #by default, no bank or grade
+		self.grade = np.zeros((self.s.size, 3))
+		self.isOpen = isOpen
+		self.roadIC = [self.roadPsi[0], self.posE[0], self.posN[0]]
+
+
+		return
+
 
 	def genFromSK(self, prim_s, prim_k, points_per_meter = 4):
 		
@@ -86,6 +127,8 @@ class Path:
 		self.curvature = k
 		self.posE = E
 		self.posN = N
+		self.bank = np.zeros((self.s.size, 3)) #by default, no bank or grade
+		self.grade = np.zeros((self.s.size, 3))
 		self.roadPsi = psi
 		self.roadIC = [psi_init, E_init, N_init]
 		self.isOpen = 1 #worlds generated from SK are always open
@@ -116,6 +159,8 @@ class Path:
 		roadPsi = np.interp(s, self.s, self.roadPsi)
 		
 		#not sure the best way to do these next six lines
+
+ 
 		b1 = np.interp(s, self.s, self.bank[:,0])
 		b2 = np.interp(s, self.s, self.bank[:,1])
 		b3 = np.interp(s, self.s, self.bank[:,2])
@@ -125,6 +170,7 @@ class Path:
 
 		bank = np.concatenate((b1[:, np.newaxis], b2[:,np.newaxis], b3[:,np.newaxis]), axis = 1)
 		grade = np.concatenate((g1[:, np.newaxis], g2[:, np.newaxis], g3[:, np.newaxis]), axis = 1)
+
 
 		self.s = s
 		self.curvature = curvature
@@ -142,6 +188,31 @@ class Path:
 ###################################################################################################
 ################################### HELPER FUNCTIONS ##############################################
 ###################################################################################################
+
+def getPsiFromEN(posE, posN):
+	N = len(posE)
+	truePsi = np.zeros((N,1))
+
+	for i in range(1,N):
+		delE = posE[i] - posE[i-1]
+		delN = posN[i] - posN[i-1]
+
+		#hacks to keep things consistent with quill
+		truePsi[i] = np.arctan2(delN, delE) + 3 * np.pi / 2
+		if abs(truePsi[i] - truePsi[i-1]) > np.pi:
+			truePsi[i] = truePsi[i] + 2 * np.pi
+
+		#hacks to avoid jumps in psi
+		while (truePsi[i] - truePsi[i-1]) > np.pi:
+		 	truePsi[i] = truePsi[i] - 2*np.pi
+
+		# while (truePsi[i] - truePsi[i-1]) < np.pi:
+		#  	truePsi[i] = truePsi[i] +  2*np.pi 
+
+
+	truePsi[0] = truePsi[1]
+
+	return truePsi
 
 
 def generateRandomClothoid(ds, k_min, k_max, s_min, s_max):
