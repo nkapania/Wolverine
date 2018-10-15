@@ -12,13 +12,19 @@ from scipy import interpolate
 #2016 JDSMC paper
 
 class OptimizationResults:
-	def __init__(self, vp, logFile, opt, path):
-		self.vps = [vp]
+	def __init__(self, vpDict, logFile, optDict, pathDict, lapTime):
+		self.vps = [vpDict]
 		self.logFiles = [logFile]
-		self.opt = [opt]
-		self.path = [path]
+		self.opt = [optDict]
+		self.path = [pathDict]
+		self.lapTimes= [lapTime]
 
-
+	def append(self, vpDict, logFile, optDict, pathDict, lapTime):
+		self.vps.append(vpDict)
+		self.logFiles.append(logFile)
+		self.opt.append(optDict)
+		self.path.append(pathDict)
+		self.lapTimes.append(lapTime)
 
 
 class RapidPathGeneration:
@@ -27,8 +33,8 @@ class RapidPathGeneration:
 		#optimization parameters
 		self.NUM_ITERS = NUM_ITERS
 		self.NUM_POINTS = 1863 #number of points in optimization routine - currently set to match MATLAB
-		self.lam1 = 1 #weight on steering regularization
-		self.lam2 = np.zeros((self.NUM_POINTS, 1)) #weight on minimum distance
+		self.lam1 = 1.0 #weight on steering regularization
+		self.lam2 = np.zeros((self.NUM_POINTS, 1)) #weights on minimum distance
 
 
 		#problem data
@@ -47,17 +53,14 @@ class RapidPathGeneration:
 		self.widthLeft, self.widthRight  = self.getLaneWidth()
 		#initial solution
 		self.vp = RacingProfile(vehicle, path, self.mu, vMax = 99)
-		controller = LaneKeepingController(path, vehicle, self.vp)
-		self.bikeSim = Simulation(vehicle, controller, path = self.path, profile = self.vp, mapMatchType = "closest")
-		#logFile0 = bikeSim.simulate()
-		#lapTime = bikeSim.getLapTime()
-		lapTime = 0
-
+		self.controller = LaneKeepingController(path, vehicle, self.vp)
+		bikeSim = Simulation(vehicle, self.controller, path = self.path, profile = self.vp, mapMatchType = "closest")
+		logFile0 = bikeSim.simulate()
+		lapTime = bikeSim.getLapTime()
+		
 		#append data from iteration 0 into results class
-		#self.optResults = OptimizationResults(self.vp, logFile0, None, path)
-		self.optResults = OptimizationResults(self.vp, None, None, path)
-		self.lapTimes = [lapTime]
-
+		self.optResults = OptimizationResults(self.vp.toDict(), logFile0, None, self.initialPath.toDict(), lapTime)
+		
 
 	def optimize(self):
 		print("Optimizing Path")
@@ -71,14 +74,18 @@ class RapidPathGeneration:
 			self.vp = RacingProfile(self.vehicle, self.path, self.mu)
 
 			#simulate and collect new lap time
-			self.bikeSim.updatePath(self.path)
-			logFile = self.bikeSim.simulate()
-			lapTime = self.bikeSim.getLapTime()
+
+			#note - generally not great to initialize objects within loop, but N here is less than 5 so probably OK
+			bikeSim = Simulation(self.vehicle, self.controller, path = self.path, profile = self.vp, mapMatchType = "closest")
+			
+
+			logFile = bikeSim.simulate()
+			lapTime = bikeSim.getLapTime()
 
 			#cache problem data
-			self.optResults.append(self.vp, logFile, opt, self.path)
+			self.optResults.append(self.vp.toDict(), logFile, opt, self.path.toDict(), lapTime)
 
-		return self.path, self.vp
+		return self.optResults
 
 
 	def getRapidTrajectory(self):

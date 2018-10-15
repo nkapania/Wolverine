@@ -139,6 +139,10 @@ class Simulation:
         self.path = path
         return
 
+    def updateVelocityProfile(self, profile):
+        self.profile = profile
+        return
+
 
     def printStatus(self, localState, counter):
         if self.path is None:

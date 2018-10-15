@@ -149,6 +149,16 @@ class Path:
 
 		self.genFromSK(s, k)
 
+	def toDict(self):
+		out = {}
+		out["s"] = self.s
+		out["K"] = self.curvature
+		out["posE"] = self.posE
+		out["posN"] = self.posN
+		out["roadPsi"] = self.roadPsi
+
+		return out
+
 	def resample(self, ds):
 		#resample path to a different constant spacing
 

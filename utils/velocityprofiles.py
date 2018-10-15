@@ -51,6 +51,15 @@ class BasicProfile():
 		else:
 			self.generateBasicProfileClosed(AxMax)
 
+	
+	def toDict(self):
+		out = {}
+		out["s"] = self.s
+		out["Ux"] = self.Ux
+		out["Ax"] = self.Ax 
+
+		return out
+
 	def generateBasicProfileClosed(self, AxMax):
 		g = 9.81
 		K = self.path.curvature
@@ -172,6 +181,14 @@ class RacingProfile():
 		print("Generating Racing Profile")
 		Fv2, G, Mv2, MvDot, theta = self.makePath3D()
 		self.findSpeedProfile(Fv2, G, Mv2, MvDot, theta)
+
+	def toDict(self):
+		out = {}
+		out["s"] = self.s
+		out["Ux"] = self.Ux
+		out["Ax"] = self.Ax 
+
+		return out
 
 	def findSpeedProfile(self,Fv2, G, Mv2, Mvdot, theta):
 		

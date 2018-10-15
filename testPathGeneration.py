@@ -14,11 +14,13 @@ track.loadFromMAT("maps/THcenter.mat")
 # #load in road bounds
 bounds = sio.loadmat('maps/thunderhill_bounds_shifted.mat')
 
-rpg = RapidPathGeneration(veh, track, bounds, mu = 0.9)
+rpg = RapidPathGeneration(veh, track, bounds, mu = 0.9, NUM_ITERS = 1)
 plt.plot(rpg.widthLeft)
 plt.plot(rpg.widthRight)
 plt.show()
 
-path, vp = rpg.optimize()
+results = rpg.optimize()
+
+print(results.lapTimes)
 
 
