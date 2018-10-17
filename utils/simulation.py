@@ -586,7 +586,7 @@ class MapMatch:
 			sys.exit("invalid mapMatch Type")
 
 	def mapMatchEmbed(self, posE, posN, psi):
-		e, s, K, psiDes, initStatus, numIters, smallestNorm = self.convertToLocalPathEMBED(posE, posN) 
+		e, s, K, psiDes, initStatus, numIters, smallestNorm = self.convertToLocalPathEmbed(posE, posN) 
 
 		if initStatus == False:
 			e = 0
@@ -639,7 +639,7 @@ class MapMatch:
 		path = self.path
 
 		m = len(self.path.s)
-		EN = [posE, posN]
+		EN = np.array([posE, posN])
 
 		#go forward
 
@@ -652,14 +652,16 @@ class MapMatch:
 			numForwardIterations = numForwardIterations + 1
 
 			if forwardInd <= m - 2:
-				currentPair = np.linalg.norm(EN - [path.posE[forwardInd]], path.posN[forwardInd])+np.linalg.norm(EN - [path.posE[forwardInd+1]], path.posN[forwardInd+1])
+				currentPair = np.linalg.norm(EN - np.array([path.posE[forwardInd], path.posN[forwardInd]])) + \
+				np.linalg.norm(EN - np.array([path.posE[forwardInd+1], path.posN[forwardInd+1]]))
+
 			else:
 			#allow searching at the beginning of the map if world is closed 
 				if path.isOpen:
 					currentPair = 9999999
 				else:
-					currentPair = np.linalg.norm(EN - [path.posE[forwardInd]],
-					path.posN[forwardInd]) + np.linalg.norm(EN - [path.posE[1]], path.posN[1])   
+					currentPair = np.linalg.norm(EN - np.array([path.posE[forwardInd], path.posN[forwardInd]])) + \
+					np.linalg.norm(EN - np.array([path.posE[0], path.posN[0]]))  
 
 			stillDecreasing = currentPair < lastPair
 
@@ -668,7 +670,7 @@ class MapMatch:
 
 				#allow searching at beginning of map if world is closed
 				if (forwardInd == m-1) & (not path.isOpen):
-					forwardInd = 1
+					forwardInd = 0
 				else:
 					forwardInd += 1
 
@@ -691,23 +693,23 @@ class MapMatch:
 
 			else:
 				#allow searching at end of map if map is closed
-				if openWorld:
+				if path.isOpen:
 					currentPair = 9999999 #inf
 				else:
 					currentPair = np.linalg.norm(EN - [path.posE[backwardInd],
-					path.posN[backwardInd]]) + np.linalg.norm(EN - [path.posE[m],
-					path.posN[m]])
+					path.posN[backwardInd]]) + np.linalg.norm(EN - [path.posE[m-1],
+					path.posN[m-1]])
 
 
-				stillDecreasing = currentPair < lastPair
-				if stillDecreasing:
-					lastPair = currentPair
+			stillDecreasing = currentPair < lastPair
+			if stillDecreasing:
+				lastPair = currentPair
 
 				#allow searching from end of map if map is clsoed
 				if (backwardInd ==0) & (not path.isOpen):
 					backwardInd = m-1 
 				else:
-					backardInd = backwardInd - 1
+					backwardInd = backwardInd - 1
 
 		smallestB = lastPair
 
@@ -737,9 +739,9 @@ class MapMatch:
 		#need to track this for initialization testing
 		smallestNorm = min(smallestB, smallestF)
 
-		a = np.linalg.norm(EN-[path.posE[lowSind], path.posN[lowSind]])
-		b = np.linalg.norm(EN-[path.posE[highSind], path.posN[highSind]])
-		c = np.linalg.norm([path.posE[lowSind], path.posN[lowSind]]-[path.posE[highSInd], path.posN[highSInd]])
+		a = np.linalg.norm(EN-np.array([path.posE[lowSind], path.posN[lowSind]]))
+		b = np.linalg.norm(EN-np.array([path.posE[highSind], path.posN[highSind]]))
+		c = np.linalg.norm(np.array([path.posE[lowSind], path.posN[lowSind]])- np.array([path.posE[highSind], path.posN[highSind]]))
 
 		deltaS = (a**2+c**2-b**2)/(2*c)
 		abs_e = np.sqrt(np.abs(a**2 - deltaS**2))
@@ -756,8 +758,8 @@ class MapMatch:
 		e = np.sign(crss[2])*abs_e
 
 		#compute K and psi desired via interpolation
-		psiDes = path.roadPsi[lowSind] + (path.roadPsi[highSInd] - path.roadPsi[lowSind])/(path.s[highSind] - path.s[lowSind])*deltaS
-		K =      path.curvature[lowSind]   + (path.curvature[highSInd] - path.curvature[lowSind])/(path.s[highSInd] - path.s[lowSind])*deltaS
+		psiDes = path.roadPsi[lowSind] + (path.roadPsi[highSind] - path.roadPsi[lowSind])/(path.s[highSind] - path.s[lowSind])*deltaS
+		K =      path.curvature[lowSind]   + (path.curvature[highSind] - path.curvature[lowSind])/(path.s[highSind] - path.s[lowSind])*deltaS
 
 		if smallestNorm < self.REQUIRED_DISTANCE:
 			converged = True
@@ -773,7 +775,7 @@ class MapMatch:
 
 		iterations = numForwardIterations + numBackwardIterations
 
-		return e, s, K, psiDes, initStatus, numIters, smallestNorm
+		return e, s, K, psiDes, converged, iterations, smallestNorm
 
 	def convertToLocalPath(self, pEN):
 		#reshape to rank 0 arrays
