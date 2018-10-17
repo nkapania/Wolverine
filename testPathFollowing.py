@@ -23,11 +23,11 @@ controller = LaneKeepingController(track, veh, speedProfile)
 
 #simulate
 bikeSim = Simulation(veh, controller, path = track, profile = speedProfile, 
-	mapMatchType = "closest", tires = "coupled") 
+	mapMatchType = "embed", tires = "coupled", desiredLaps = 2) 
 logFile = bikeSim.simulate()
 
 #analyze results
-#bikeSim.plotResults(xaxis = "t")
+bikeSim.plotResults(xaxis = "t")
 
 # # #animate car
 #anim = MyAnimation(logFile, track, veh, timeStep = bikeSim.ts, interval = 5)
@@ -35,4 +35,4 @@ logFile = bikeSim.simulate()
 
 
 #write to .mat file
-bikeSim.save('logs/mu9')
+#bikeSim.save('logs/mu9')
