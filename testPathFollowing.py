@@ -23,11 +23,11 @@ controller = LaneKeepingController(track, veh, speedProfile)
 
 #simulate
 bikeSim = Simulation(veh, controller, path = track, profile = speedProfile, 
-	mapMatchType = "closest", tires = "coupled") 
+	mapMatchType = "closest", tires = "coupled", maxTime = 200.) 
 logFile = bikeSim.simulate()
 
 #analyze results
-bikeSim.plotResults()
+bikeSim.plotResults(xaxis = "t")
 
 # # #animate car
 #anim = MyAnimation(logFile, track, veh, timeStep = bikeSim.ts, interval = 5)
