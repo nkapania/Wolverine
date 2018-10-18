@@ -164,7 +164,7 @@ class Simulation:
 			t = counter * self.ts 
 			pctComplete = np.ceil( 100 * t / self.maxTime)
 		else:
-			pctComplete = np.ceil( 100 * localState.s / self.path.s[-1] )
+			pctComplete = np.ceil( 100 * (localState.s + self.path.s[-1] * self.lapNumber) / (self.path.s[-1]*self.desiredLaps) )
 
 		if np.mod(counter, 100) == 0:
 			print("Simulation is %02d percent done" % pctComplete)

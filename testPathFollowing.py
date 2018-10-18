@@ -23,7 +23,7 @@ controller = LaneKeepingController(track, veh, speedProfile)
 
 #simulate
 bikeSim = Simulation(veh, controller, path = track, profile = speedProfile, 
-	mapMatchType = "embed", tires = "coupled", desiredLaps = 2) 
+	mapMatchType = "embed", tires = "coupled", desiredLaps = 3) 
 logFile = bikeSim.simulate()
 
 #analyze results
