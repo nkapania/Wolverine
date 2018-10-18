@@ -1,7 +1,7 @@
 import numpy as np
 import tiremodels as tm
 import scipy
-
+import pdb
 
 
 #### General utility functions useful across libraries ######
@@ -51,6 +51,7 @@ def getAllSys(veh, Ux, K, ts):
 		D.append(d)
 
 
+
 	return A, B, D
 
 
@@ -89,7 +90,9 @@ def getAffineModel(Ux, K, ts, veh, aFhat, aRhat):
 
 	A, B1 = myc2d(Ac, np.concatenate((Bc, dc), axis = 1), ts)
 	B = B1[:,0]
+	#B = np.reshape(B, (B.size,1)) 
 	d = B1[:,1]
+	#d = np.reshape(d, (d.size,1))
 
 	return A, B, d
 

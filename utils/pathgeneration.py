@@ -7,6 +7,7 @@ from control import *
 from paths import *
 import sys
 from scipy import interpolate
+import pdb
 
 #Implements rapid path generation algorithm described in N. Kapania et al.
 #2016 JDSMC paper
@@ -90,15 +91,11 @@ class RapidPathGeneration:
 
 	def getRapidTrajectory(self):
 		#resample world and velocity profile objects for optimization
-		ds = self.path.s[-1] / self.NUM_POINTS
+		ds = self.path.s[-1] / (self.NUM_POINTS)
 		
 		self.path.resample(ds)	
 		self.vp.resample(ds)
 		self.resampleLaneWidth()
-
-		plt.plot(self.widthLeft)
-		plt.plot(self.widthRight)
-		plt.show()
 
 		opt = self.getCurvatureProfile()
 
@@ -133,6 +130,7 @@ class RapidPathGeneration:
 		lam2 = self.lam2
 
 		#get problem data
+
 		offset = np.linalg.norm( [self.path.posE[0] - self.path.posE[-1], self.path.posN[0] - self.path.posN[-1]] )
 		ds = np.diff(s)
 
@@ -188,12 +186,13 @@ class RapidPathGeneration:
 		opt["roadPsi"] = opt["dPsi"] + psiR
 		opt["beta"] = x[3,:].T 
 		opt["s"] = self.path.s
+		opt["widthLeft"] = self.widthLeft
+		opt["widthRight"] = self.widthRight
 		opt["ts"] = ts
 		opt["delta"] = delta
 		opt["posE"], opt["posN"] = convertPathToGlobal(self.path, self.path.s, opt["e"]) 
 		opt["K"] = 1/ds*np.diff(psiR + opt["dPsi"])
-		opt["K"] = np.concatenate((opt["K"][0: np.newaxis], opt["K"])) #ensure consistency of dimensions
-
+		opt["K"] = np.concatenate((opt["K"][0, np.newaxis], opt["K"])) #ensure consistency of dimensions
 
 		return opt
 
@@ -288,9 +287,10 @@ def getMinDistance(point, line, lastidx):
 	shortest = np.inf
 
 
+
 	#search the whole map
 	if lastidx == -1:
-		for i in range(n-1): #needed to avoid out of bounds error
+		for i in range(n): 
 			dist = np.linalg.norm(point - line[i,:])
 			if dist < shortest:
 				shortest = dist
@@ -333,6 +333,7 @@ def getMinDistance(point, line, lastidx):
 
 			i = i + 1
 
+		
 	return shortest, lastidx
 
 

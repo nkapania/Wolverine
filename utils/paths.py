@@ -160,13 +160,19 @@ class Path:
 		return out
 
 	def resample(self, ds):
-		#resample path to a different constant spacing
+		#resample path to a different constant spacing. Issue with this is last point
+		#due to arange method.
 
 		s = np.arange(0, self.s[-1], ds)
 		curvature = np.interp(s, self.s, self.curvature)
 		posE = np.interp(s, self.s, self.posE)
 		posN = np.interp(s, self.s, self.posN)
 		roadPsi = np.interp(s, self.s, self.roadPsi)
+
+		#HACK: make sure we still end at the same point
+		posE[-1] = self.posE[-1]
+		posN[-1] = self.posN[-1]
+		roadPsi[-1] = self.roadPsi[-1]
 		
 		#not sure the best way to do these next six lines
 
@@ -191,8 +197,6 @@ class Path:
 		self.grade = grade
 
 		return
-
-
 
 
 ###################################################################################################
