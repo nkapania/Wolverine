@@ -11,8 +11,8 @@ veh = Vehicle(vehicleName = "shelley")
 
 #Create path object
 track = Path()
-track.loadFromMAT("maps/thunderhill_race.mat")
-#track.generateRandomWorld(numTurns = 10)
+#track.loadFromMAT("maps/thunderhill_race.mat")
+track.loadFromMAT("maps/joeFunkeSuperSpeedway_newSkidpad_flat.mat")
 
 # Create speed profile
 speedProfile = RacingProfile(veh, track, friction = 0.90, vMax = 99)
@@ -23,7 +23,7 @@ controller = LaneKeepingController(track, veh, speedProfile)
 
 #simulate
 bikeSim = Simulation(veh, controller, path = track, profile = speedProfile, 
-	mapMatchType = "embed", tires = "coupled", desiredLaps = 3) 
+	mapMatchType = "embed", tires = "coupled", desiredLaps = 1) 
 logFile = bikeSim.simulate()
 
 #analyze results
